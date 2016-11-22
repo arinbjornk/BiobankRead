@@ -10,7 +10,10 @@ import bs4 #beautifulsoup4 package
 import re # RegEx 
 import urllib2
 import numpy as np
-import datetime
+from datetime import datetime
+
+projectID=IDmain
+studyID=IDsub
 
 def convert_to_str(projectID,studyID):
     if isinstance(projectID,int):
@@ -19,24 +22,25 @@ def convert_to_str(projectID,studyID):
         studyID= str(studyID)
     return projectID,studyID
     
+projectID,studyID=convert_to_str(projectID,studyID)
+    
 def files_path(x=None,y=None,opt='html'):
     #x = project ID
     #y = study ID
     #opt = html or csv
     return 'D:\Uk Biobank\Application '+x+'\R'+y+'\ukb'+y+'.'+opt
+   
+html_file = files_path(x=projectID,y=studyID)
     
-    
-def makeSoup(projectID=None,
-                    studyID=None):
-    html_file = files_path(x=projectID,y=studyID)
+def makeSoup():
     f =  open(html_file,'r').read()
     soup = bs4.BeautifulSoup(f,'html.parser')
     return soup
+    
+Global_soup = makeSoup()
 
-def All_variables(projectID=None,
-                    studyID=None):
-    projectID,studyID = convert_to_str(projectID,studyID)
-    soup = makeSoup(projectID,studyID)
+def All_variables():
+    soup = Global_soup
     allrows = soup.findAll('tr')
     res = []
     for t in allrows:
@@ -51,23 +55,23 @@ def All_variables(projectID=None,
             res.append(xx)
     return res
 
-def GetEIDs(projectID=None,
-            studyID=None,
-            n_subjects = 1000):
+def GetEIDs(n_subjects = 1000):
     # data frame of EIDs
-    projectID,studyID = convert_to_str(projectID,studyID)
     filename = files_path(x=projectID,y=studyID,opt='csv')
     EIDs = pd.read_csv(filename,usecols=['eid'],nrows=n_subjects)
     return EIDs
+    
+def Get_ass_dates(n_subjects = 1000):
+    # data frame of EIDs
+    var = 'Date of attending assessment centre'
+    Ds,n = extract_variable(var,n_subjects)
+    return Ds
 
-def extract_variable(projectID=None,
-                    studyID=None,
-                     variable=None,
+def extract_variable(variable=None,
                      n_subjects = 1000):
-    projectID,studyID = convert_to_str(projectID,studyID)
     filename = files_path(x=projectID,y=studyID,opt='csv')
     ### extract fields 
-    soup = makeSoup(projectID,studyID)
+    soup =Global_soup
     allrows = soup.findAll('tr')
     ## search variable string for shitty characters
     symbols = special_char()
@@ -149,16 +153,15 @@ def illness_codes_categories(data_coding=6):
             Group_names.append(aa)
     Groups = pd.Series(data=Group_codes,index=Group_names)
     return Groups
-    
-def all_the_vars_I_want(keyword=None,projectID=None,
-                    studyID=None,n_subjects=1000,dropNaN=True):
-    # lists of variables 
-    Vars = All_variables(projectID,studyID)
+ 
+Vars = All_variables()
+   
+def all_the_vars_I_want(keyword=None,n_subjects=1000,dropNaN=True):
     stuff = [t for t in Vars if re.search(keyword[1::],t)]#t.find(keyword[1::]) > -1]
     if len(stuff) >1:
         stuff_var = {}
         for var in stuff:
-            DBP, DBP_names = extract_variable(projectID,studyID,var,n_subjects)
+            DBP, DBP_names = extract_variable(var,n_subjects)
             if dropNaN:
             # drop subjects with no reported illness
                 tmp = list(DBP.columns.values)
@@ -190,9 +193,7 @@ def BP_aver_visit(df=None,Type='Systolic'):
         u +=1 
     return new_df
     
-def confounders_gen(projectID=None,
-                    studyID=None,
-                    more_vars = [],
+def confounders_gen(more_vars = [],
                     n_subjects=1000):
     conf_names = ['Body mass index (BMI)','Year of birth','Ethnic background','Sex']
     if len(more_vars)>0:
@@ -283,12 +284,9 @@ def rename_columns(df=None,key=None,option_str=True):
         df_new[col_new[c]] = df[col_names[c]]
     return df_new
     
-def find_DataCoding(projectID=None,
-                    studyID=None,
-                     variable=None):
-    projectID,studyID = convert_to_str(projectID,studyID)
+def find_DataCoding(variable=None):
     ### extract fields 
-    soup = makeSoup(projectID,studyID)
+    soup = Global_soup
     allrows = soup.findAll('tr')
     ## search variable string for shitty characters
     symbols = special_char()
@@ -347,47 +345,8 @@ def re_wildcard(strs=None):
     for word in strs[1::]:
         res = res+'(.?)*'+word
     return res
-    
-def ICD10_match(df=None,cols=None,icds=None):
-    # find input ICD10 codes in specified columns from input dataframe
-    # type = 'HES'
-    df = df.fillna(value='A000') # replace nan by a non-disease code
-    if type(icds) is pd.core.series.Series:
-        icds = icds.tolist()
-        icds = [x for x in icds if str(x) != 'nan']
-    if cols is None:
-        cols = get_cols_names(df)
-        # remove eids
-        cols = cols[1::]
-    new_df = pd.DataFrame(columns=icds)
-    new_df['eid'] = df['eid']
-    for icd10 in icds:
-        temp = [df[loc].str.contains(icd10) for loc in cols]
-        temp = np.column_stack(temp)
-        res_tmp = np.sum(temp,axis=1)
-        new_df[icd10] = res_tmp
-    return new_df
-    
-def SR_match(df=None,cols=None,icds=None):
-    # find input SR desease codes in specified columns from input dataframe
-    # type = (self reported)
-    df = df.fillna(value=0) # replace nan by a non-disease code
-    if type(icds) is pd.core.series.Series:
-        icds = icds.tolist()
-        icds = [x for x in icds if str(x) != 'nan']
-    if cols is None:
-        cols = get_cols_names(df)
-        # remove eids
-        cols = cols[1::]
-    new_df = pd.DataFrame(columns=icds)
-    new_df['eid'] = df['eid']
-    for icd10 in icds:
-        temp = [df[loc]==icd10 for loc in cols]
-        temp = np.column_stack(temp)
-        res_tmp = np.sum(temp,axis=1)
-        new_df[icd10] = res_tmp
-    return new_df
-    
+ 
+ ################## HES data extraction + manipulation ##############################
 def CVD_files(types='ICD10',what='stroke'):
         # types = ICD10 or SR
         # what = stroke of OPCS
@@ -401,6 +360,8 @@ def ICD10_CVD(option='diagnosis',type='CAD',stack=True):
         filename = CVD_files(types='ICD10',what='stroke')
     if option == 'OPCS':
         filename = CVD_files(types='ICD10',what=option)
+    if option=='icd9':
+        filename = CVD_files(types='ICD9',what='stroke')
     df = pd.read_csv(filename)
     if stack:
         res = []
@@ -411,7 +372,7 @@ def ICD10_CVD(option='diagnosis',type='CAD',stack=True):
         return res.tolist()
     else:
         return df[type]
-    
+        
 def selfreported_CVD(option='diagnosis',type='CAD',stack=True):
     # option 'diagnosis' or 'OPCS' 
     # type 'CAD', 'PAD', 'stroke'
@@ -434,10 +395,244 @@ def selfreported_CVD(option='diagnosis',type='CAD',stack=True):
         return res2
     else:
         return df[type]
+   
+# define global variables
+   
+codes_icd10 = ICD10_CVD(option='diagnosis')
+codes_icd9 = ICD10_CVD(option='icd9')
+codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
+codes_OPCS = ICD10_CVD(option='OPCS')
+codes_SR = selfreported_CVD(option='diagnosis')
+    
+def ICD10_match(df=None,cols=None,icds=codes_icd10):
+    # find input ICD10 codes in specified columns from input dataframe
+    # type = 'HES'
+    df = df.fillna(value='A000') # replace nan by a non-disease code
+    if type(icds) is pd.core.series.Series:
+        icds = icds.tolist()
+        icds = [x for x in icds if str(x) != 'nan']
+    if cols is None:
+        cols = get_cols_names(df)
+        # remove eids
+        cols = cols[1::]
+    new_df = pd.DataFrame(columns=icds)
+    new_df['eid'] = df['eid']
+    for icd10 in icds:
+        temp = [df[loc].str.contains(icd10) for loc in cols]
+        temp = np.column_stack(temp)
+        res_tmp = np.sum(temp,axis=1)
+        new_df[icd10] = res_tmp
+    return new_df
+    
+def code_match_HES(df=None,cols=None,icds=None,opt='All',which='diagnosis'):
+    # find input ICD10 codes in specified columns from input Series
+    # USe only on'HES' extrated directly from HES.tsv file
+    # opt= ALL of cvd_only
+    if type(icds) is pd.core.series.Series:
+        icds = icds.tolist()
+        icds = [x for x in icds if str(x) != 'nan']
+    if cols is None:
+        cols = get_cols_names(df)
+    # remove eids
+    cols = cols[1::]
+    if which == 'diagnosis':
+        icd = 'diag_icd10'
+    elif which == 'opcs':
+        icd = 'oper4'
+    else:
+        icd = 'diag_icd9'
+    new_df = pd.DataFrame(columns=cols)
+    new_df['eid'] = df['eid']
+    df_mini = df[icd].tolist()
+    #print df_mini
+    res_tmp =[ x in icds for x in df_mini]
+    if opt == 'All':
+        new_df[cols] = res_tmp
+        return new_df
+    else:
+        new_df_2 = df[res_tmp]
+        return new_df_2
+        
+def CVD_match_HES(df=None,cols=None,icds=codes_icd10,icd_old=codes_icd9,opcs=codes_OPCS,opt='All'):
+    # find input ICD10 & OPCS codes in specified columns from input Series
+    # USe only on'HES' extrated directly from HES.tsv file
+    # opt= ALL or cvd_only
+    if type(icds) is pd.core.series.Series:
+        icds = icds.tolist()
+        icds = [x for x in icds if str(x) != 'nan']
+    if type(opcs) is pd.core.series.Series:
+        opcs = opcs.tolist()
+        opcs = [x for x in opcs if str(x) != 'nan']  
+    if type(icd_old) is pd.core.series.Series:
+        icd_old = icd_old.tolist()
+        icd_old = [x for x in icd_old if str(x) != 'nan'] 
+    if cols is None:
+        cols = get_cols_names(df)
+    cols = cols[1::]     # remove eids
+    new_df = pd.DataFrame(columns=cols)
+    new_df['eid'] = df['eid']
+    #'diagnosis' part
+    icd = 'diag_icd10'
+    df_mini1 = df[icd].tolist()
+    res_tmp1 =[ x in icds for x in df_mini1]
+    # icd9 diagnosis part
+    icd = 'diag_icd9'
+    df_mini2 = df[icd].tolist()
+    res_tmp2 =[ x in icd_old for x in df_mini2]
+    # opertaion part
+    icd = 'oper4'
+    df_mini3 = df[icd].tolist()
+    res_tmp3 =[ x in opcs for x in df_mini3]
+    #print len(res_tmp2)
+    ## union of the 2
+    res_tmp = [max(x,y,z) for (x,y,z) in zip(res_tmp1,res_tmp2,res_tmp3)]
+    if opt == 'All':
+        new_df[cols] = res_tmp
+        return new_df
+    else:
+        new_df_2 = df[res_tmp]
+        return new_df_2
+    
+    
+def SR_match(df=None,cols=None,icds=codes_SR):
+    # find input SR desease codes in specified columns from input dataframe
+    # type = (self reported)
+    df = df.fillna(value=0) # replace nan by a non-disease code
+    if type(icds) is pd.core.series.Series:
+        icds = icds.tolist()
+        icds = [x for x in icds if str(x) != 'nan']
+    if cols is None:
+        cols = get_cols_names(df)
+        # remove eids
+        cols = cols[1::]
+    new_df = pd.DataFrame(columns=icds)
+    new_df['eid'] = df['eid']
+    for icd10 in icds:
+        temp = [df[loc]==icd10 for loc in cols]
+        temp = np.column_stack(temp)
+        res_tmp = np.sum(temp,axis=1)
+        new_df[icd10] = res_tmp
+    return new_df
         
 def search_in_list(ls=None,key=None):
     #search keyword in list
     return [x for x in ls if re.search(key,str(x))]
+    
+def HES_tsv_read(filename=None,var='All',n=None):
+    everything_HES = pd.read_csv(filename,delimiter='\t',nrows=n)
+    #everything_HES=everything_HES.set_index('eid')
+    if var == 'All':    
+        return everything_HES
+    else:
+       sub_HES = everything_HES[var]
+       return sub_HES
+       
+def HES_remove_Duplicates(df=None,which='First'):
+    # which: which incidents to keep
+    # first: first ever HES record, else: most recent HES record
+    eids = df['eid'].tolist()
+    cols = get_cols_names(df)
+    new_Df = pd.DataFrame(columns=cols)
+    eids = list(set(eids)) # remove duplicates
+    for ee in eids:
+        tmp =  df[df['eid']==ee]
+        if len(tmp) > 1:
+            if which == 'First':
+                x = min(tmp['epistart'])
+            else:
+                x = max(tmp['epistart'])
+            tmp2 = tmp[tmp['epistart']==x]
+            new_Df=new_Df.append(tmp2,ignore_index=True)
+            #eids = [z for z in eids if z != ee]
+        else:
+            new_Df=new_Df.append(tmp,ignore_index=True)
+    return new_Df
+    
+'''def HES_baseline(df=None,which='No'):
+    biobank_start = datetime(2005,12,31)
+    dates = df[['epistart','admidate']] # discrepancies in records
+    #dates['epistart'].fillna(dates['admidate'],inplace=True) #fill blanks
+    #dates['admidate'].fillna(dates['epistart'],inplace=True) #fill blanks
+    admi_date = dates['epistart'].tolist()
+    res = []
+    for ee in eids:
+        tmp =  df[df['eid']==ee]
+        if len(tmp) > 1:
+    for dates in admi_date:
+        if dates >0:
+            new_admidate = datetime.strptime(dates, "%Y-%m-%d")
+            res.append(new_admidate > biobank_start)
+        else:
+            res.append(False)
+    if which != 'No':
+        res = [not r for r in res]
+    new_df = df[res]
+    return new_df'''
+    
+def HES_first_time(df=None):
+    #admi_dates = df['admidate'].tolist()# discrepancies in records
+    eids_unique = df.index.tolist()
+    eids_unique = list(set(eids_unique))
+    #cols = get_cols_names(df)
+    new_Df = pd.DataFrame(columns=['eid','first_admidate'])
+   #new_Df['eid']=df['eid']
+    res = []
+    for ee in eids_unique:
+        tmp =  df[df.index==ee]
+        res.append(len(tmp))
+        x = tmp['admidate'].min()
+        df2=pd.DataFrame([[ee,x]],columns=['eid','first_admidate'])
+        new_Df=new_Df.append(df2,ignore_index=True)
+    return new_Df
+    
+def HES_CVD_after_assess(df=None,assess_dates=None):
+    eids = assess_dates['eid'].tolist()
+    DF = pd.DataFrame(columns=['eid','After','date_aft'])
+    for ee in eids:
+        tmp =  df[df.index==ee]
+        tmp_ass_date = assess_dates[assess_dates['eid']==ee]
+        tmp_ass_date=tmp_ass_date['assess_date'].iloc[0]
+        tmp2= tmp[tmp['admidate']>tmp_ass_date]
+        if len(tmp2)>0:
+            oo = True
+            x = tmp2['admidate'].min()
+        else:
+            oo = False
+            x = 0
+        df2 = pd.DataFrame([[ee,oo,x]],columns=['eid','After','date_aft'])
+        DF = DF.append(df2)
+    return DF
+    
+def HES_CVD_before_assess(df=None,dates=None):
+    DF = pd.DataFrame(columns=['eid','Before'])
+    DF['eid'] = dates['eid']
+    assess_date = dates['assess_date'].tolist()
+    res=[a>b for (a,b) in zip(assess_date,dates['first_admidate'].tolist())]
+    DF['Before'] = res
+    return DF
+
+    
+def HES_process(df=None,drop_duplicates=True):
+    '''HES_cvd_2 = ICD10_match_HES(df,icds=codes_icd10,opt='cvd',which='diagnosis')
+    HES_surg_2 = ICD10_match_HES(df,icds=codes_OPCS,opt='cvd',which='ops')
+    cols = get_cols_names(HES_cvd_2)
+    cols_n = [x+'_x' for x in cols[1::]]
+    cols_n.append('eid')
+    HES = pd.merge(HES_cvd_2, HES_surg_2, how='outer', on=['eid'])
+    HES = HES[cols_n]
+    HES.columns = cols'''
+    HES = CVD_match_HES(df,opt='cvd')
+    #return HES
+    #HES_cvd_2=HES_cvd_2.set_index('eid')
+    # remove subjects with indicents occured BEFORE biobank started
+    No_baseline_CVD = HES_baseline(HES)
+    #remove duplicates
+    if drop_duplicates:
+        No_baseline_CVD_2 = HES_remove_Duplicates(df=No_baseline_CVD)
+        return [len(No_baseline_CVD_2),len(No_baseline_CVD),len(HES)]
+    else:
+        return No_baseline_CVD
+    
     
         
     
