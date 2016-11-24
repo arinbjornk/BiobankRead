@@ -64,7 +64,7 @@ def GetEIDs(n_subjects = 1000):
 def Get_ass_dates(n_subjects = 1000):
     # data frame of EIDs
     var = 'Date of attending assessment centre'
-    Ds,n = extract_variable(var,n_subjects)
+    Ds = extract_variable(var,n_subjects)
     return Ds
 
 def extract_variable(variable=None,
@@ -129,7 +129,7 @@ def extract_variable(variable=None,
     #everything.dropna(axis=0, how='all', inplace=True)
     #everything = pd.concat([everything,EIDs])
     df_dict = everything
-    return df_dict,var_names
+    return df_dict
     
 def illness_codes_categories(data_coding=6):
     ## Get dictionary of disease codes
@@ -156,7 +156,7 @@ def illness_codes_categories(data_coding=6):
  
 Vars = All_variables()
    
-def all_the_vars_I_want(keyword=None,n_subjects=1000,dropNaN=True):
+def all_related_vars(keyword=None,n_subjects=1000,dropNaN=True):
     stuff = [t for t in Vars if re.search(keyword[1::],t)]#t.find(keyword[1::]) > -1]
     if len(stuff) >1:
         stuff_var = {}
@@ -205,9 +205,9 @@ def confounders_gen(more_vars = [],
     df_new = {}
     #print conf_names
     for var in conf_names:
-        tmp,names = extract_variable(projectID,studyID,var,n_subjects)
+        tmp = extract_variable(var,n_subjects)
         if var == 'Year of birth': # substract from 2016 to get Age
-            now = datetime.datetime.now()
+            now = datetime.now()
             this_yr = now.year
             tmp['34-0.0'] -= this_yr
             tmp['34-0.0'] *= -1
@@ -345,6 +345,24 @@ def re_wildcard(strs=None):
     for word in strs[1::]:
         res = res+'(.?)*'+word
     return res
+    
+def Datacoding_match(df=None,key=None,name=None):
+    # find key din df with known data coding
+    # find datacoding with find_DataCoding() before using this funct.
+    if type(key) == str:
+        key = int(key)
+    cols = get_cols_names(df)
+    # remove eids
+    cols = cols[1::]
+    new_df = pd.DataFrame(columns=cols)
+    new_df['eid'] = df['eid']
+    for col in cols:
+        res_tmp1 =[ x==key for x in df[col]]
+        new_df[col]=res_tmp1
+    new_df2 = pd.DataFrame(columns=['eid',name])
+    new_df2[name] = new_df[cols].sum(axis=1)
+    new_df2['eid'] = df['eid']
+    return new_df2
  
  ################## HES data extraction + manipulation ##############################
 def CVD_files(types='ICD10',what='stroke'):
@@ -362,6 +380,8 @@ def ICD10_CVD(option='diagnosis',type='CAD',stack=True):
         filename = CVD_files(types='ICD10',what=option)
     if option=='icd9':
         filename = CVD_files(types='ICD9',what='stroke')
+    if option=='death':
+        filename = CVD_files(types='ICD10',what=option)
     df = pd.read_csv(filename)
     if stack:
         res = []
@@ -371,7 +391,9 @@ def ICD10_CVD(option='diagnosis',type='CAD',stack=True):
             res = np.concatenate((res,temp),axis=0)
         return res.tolist()
     else:
-        return df[type]
+        tmp = df[type].tolist()
+        res = [str(x) for x in tmp if str(x) != 'nan']
+        return res
         
 def selfreported_CVD(option='diagnosis',type='CAD',stack=True):
     # option 'diagnosis' or 'OPCS' 
@@ -394,20 +416,35 @@ def selfreported_CVD(option='diagnosis',type='CAD',stack=True):
             res2.append(int(float(item))) # messy format changes 
         return res2
     else:
-        return df[type]
+        tmp = df[type].tolist()
+        res = [str(x) for x in tmp if str(x) != 'nan']
+        res2 = [('%s' % x).rstrip('0').rstrip('.') for x in res]
+        return res2
    
-# define global variables
-   
-codes_icd10 = ICD10_CVD(option='diagnosis')
-codes_icd9 = ICD10_CVD(option='icd9')
-codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
-codes_OPCS = ICD10_CVD(option='OPCS')
-codes_SR = selfreported_CVD(option='diagnosis')
+# define global variable
+if options == "All":
+   ## codes - all CVD
+    codes_icd10 = ICD10_CVD(option='diagnosis')
+    codes_icd9 = ICD10_CVD(option='icd9')
+    codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
+    codes_OPCS = ICD10_CVD(option='OPCS')
+    codes_SR = selfreported_CVD(option='diagnosis')
+    codes_Death = ICD10_CVD(option='death')
+    final_str="CVD"
+else:
+   ## codes - CAD, PAD or stroke only 
+    codes_icd10 = ICD10_CVD(option='diagnosis',type=options,stack=False)
+    codes_icd9 = ICD10_CVD(option='icd9',type=options,stack=True)
+    codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
+    codes_OPCS = ICD10_CVD(option='OPCS',type=options,stack=False)
+    codes_SR = selfreported_CVD(option='diagnosis',type=options,stack=False)
+    codes_Death = ICD10_CVD(option='death',type=options,stack=False)
+    final_str=options
     
 def ICD10_match(df=None,cols=None,icds=codes_icd10):
     # find input ICD10 codes in specified columns from input dataframe
     # type = 'HES'
-    df = df.fillna(value='A000') # replace nan by a non-disease code
+    #df = df.fillna(value='A000') # replace nan by a non-disease code
     if type(icds) is pd.core.series.Series:
         icds = icds.tolist()
         icds = [x for x in icds if str(x) != 'nan']
@@ -415,13 +452,16 @@ def ICD10_match(df=None,cols=None,icds=codes_icd10):
         cols = get_cols_names(df)
         # remove eids
         cols = cols[1::]
-    new_df = pd.DataFrame(columns=icds)
+    new_df = pd.DataFrame(columns=cols)
     new_df['eid'] = df['eid']
-    for icd10 in icds:
+    for col in cols:
+        res_tmp1 =[ x in icds for x in df[col]]
+        new_df[col]=res_tmp1
+    '''for icd10 in icds:
         temp = [df[loc].str.contains(icd10) for loc in cols]
         temp = np.column_stack(temp)
         res_tmp = np.sum(temp,axis=1)
-        new_df[icd10] = res_tmp
+        new_df[icd10] = res_tmp'''
     return new_df
     
 def code_match_HES(df=None,cols=None,icds=None,opt='All',which='diagnosis'):
@@ -505,14 +545,15 @@ def SR_match(df=None,cols=None,icds=codes_SR):
         cols = get_cols_names(df)
         # remove eids
         cols = cols[1::]
-    new_df = pd.DataFrame(columns=icds)
+    new_df = pd.DataFrame(columns=cols)
     new_df['eid'] = df['eid']
-    for icd10 in icds:
-        temp = [df[loc]==icd10 for loc in cols]
-        temp = np.column_stack(temp)
-        res_tmp = np.sum(temp,axis=1)
-        new_df[icd10] = res_tmp
-    return new_df
+    for col in cols:
+        res_tmp1 =[ x in icds for x in df[col]]
+        new_df[col]=res_tmp1
+    new_df2 = pd.DataFrame(columns=['eid','SR_CVD'])
+    new_df2['SR_CVD'] = new_df[cols].sum(axis=1)
+    new_df2['eid'] = df['eid']
+    return new_df2
         
 def search_in_list(ls=None,key=None):
     #search keyword in list
@@ -570,7 +611,8 @@ def HES_remove_Duplicates(df=None,which='First'):
     return new_df'''
     
 def HES_first_time(df=None):
-    #admi_dates = df['admidate'].tolist()# discrepancies in records
+    # finds the earliest admission date in HES data for each subject
+    #   df should be HES file dataframe
     eids_unique = df.index.tolist()
     eids_unique = list(set(eids_unique))
     #cols = get_cols_names(df)
@@ -586,6 +628,9 @@ def HES_first_time(df=None):
     return new_Df
     
 def HES_CVD_after_assess(df=None,assess_dates=None):
+    # returns boolean : subject had CVD after baseline
+    # input dates needs to come from HES_first_time()
+    #   df should be HES file dataframe
     eids = assess_dates['eid'].tolist()
     DF = pd.DataFrame(columns=['eid','After','date_aft'])
     for ee in eids:
@@ -603,7 +648,9 @@ def HES_CVD_after_assess(df=None,assess_dates=None):
         DF = DF.append(df2)
     return DF
     
-def HES_CVD_before_assess(df=None,dates=None):
+def HES_CVD_before_assess(dates=None):
+    # returns boolean : subject had CVD before baseline
+    # input dates needs to come from HES_first_time()
     DF = pd.DataFrame(columns=['eid','Before'])
     DF['eid'] = dates['eid']
     assess_date = dates['assess_date'].tolist()
@@ -612,26 +659,6 @@ def HES_CVD_before_assess(df=None,dates=None):
     return DF
 
     
-def HES_process(df=None,drop_duplicates=True):
-    '''HES_cvd_2 = ICD10_match_HES(df,icds=codes_icd10,opt='cvd',which='diagnosis')
-    HES_surg_2 = ICD10_match_HES(df,icds=codes_OPCS,opt='cvd',which='ops')
-    cols = get_cols_names(HES_cvd_2)
-    cols_n = [x+'_x' for x in cols[1::]]
-    cols_n.append('eid')
-    HES = pd.merge(HES_cvd_2, HES_surg_2, how='outer', on=['eid'])
-    HES = HES[cols_n]
-    HES.columns = cols'''
-    HES = CVD_match_HES(df,opt='cvd')
-    #return HES
-    #HES_cvd_2=HES_cvd_2.set_index('eid')
-    # remove subjects with indicents occured BEFORE biobank started
-    No_baseline_CVD = HES_baseline(HES)
-    #remove duplicates
-    if drop_duplicates:
-        No_baseline_CVD_2 = HES_remove_Duplicates(df=No_baseline_CVD)
-        return [len(No_baseline_CVD_2),len(No_baseline_CVD),len(HES)]
-    else:
-        return No_baseline_CVD
     
     
         
