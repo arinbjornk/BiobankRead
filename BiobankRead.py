@@ -363,6 +363,35 @@ def Datacoding_match(df=None,key=None,name=None):
     new_df2[name] = new_df[cols].sum(axis=1)
     new_df2['eid'] = df['eid']
     return new_df2
+    
+def METhday(df=None):
+    # computes METh/day according to Guo et al 2015
+    # df input needs to be structured as: 
+    #'eid','walk','walk-dur','moderate','moderate-dur','vigorous','vigorous-dur'
+    cols = df.columns[1::]
+    multipliers = [2.3,3,7]
+    df_t = pd.DataFrame(columns=['eid'])
+    df_t['eid']=df['eid']
+    r = [0,2,4]
+    v=0
+    for i in r:
+        var = df[cols[i]]
+        dur = df[cols[i+1]]
+        # remove negative values
+        dur = [np.nan if x in [-3,-1] else x for x in dur]
+        var = [np.nan if x in [-3,-1] else x for x in var]
+        var = [0 if x == -2 else x for x in var]
+        dur = np.asarray(dur)
+        var = np.asarray(var)
+        vd = var*dur
+        vd = multipliers[v]*vd/60
+        df_t[cols[i]] = vd
+        v +=1
+    df_t['METhday'] = df_t[df_t.columns[1::]].sum(axis=1)
+    tmp= df_t['vigorous']/df_t['METhday']
+    df_t['VtT_PA'] = tmp #[0 if x !=x else x for x in tmp]
+    df_t = df_t[['eid','METhday','VtT_PA']]
+    return df_t 
  
  ################## HES data extraction + manipulation ##############################
 def CVD_files(types='ICD10',what='stroke'):
@@ -454,15 +483,21 @@ def ICD10_match(df=None,cols=None,icds=codes_icd10):
         cols = cols[1::]
     new_df = pd.DataFrame(columns=cols)
     new_df['eid'] = df['eid']
+    df = df.replace(np.nan,' ', regex=True)
     for col in cols:
-        res_tmp1 =[ x in icds for x in df[col]]
-        new_df[col]=res_tmp1
-    '''for icd10 in icds:
-        temp = [df[loc].str.contains(icd10) for loc in cols]
-        temp = np.column_stack(temp)
-        res_tmp = np.sum(temp,axis=1)
-        new_df[icd10] = res_tmp'''
+         res_1 = [x in icds for x in df[col]]
+         new_df[col]=res_1
     return new_df
+''' res = [icds[0] in y for y in df[col]]
+z = z+sum(res)
+for i in range(1,len(icds)):
+ print icds[i]
+ tmp = [icds[i] in y for y in df[col]]
+ print sum(tmp)
+ z = z+sum(tmp)
+ res = [sum(x) for x in zip(res,tmp)]
+res_1 = [x>0 for x in res]'''
+       # print z
     
 def code_match_HES(df=None,cols=None,icds=None,opt='All',which='diagnosis'):
     # find input ICD10 codes in specified columns from input Series
@@ -547,6 +582,7 @@ def SR_match(df=None,cols=None,icds=codes_SR):
         cols = cols[1::]
     new_df = pd.DataFrame(columns=cols)
     new_df['eid'] = df['eid']
+    df = df.replace(np.nan,' ', regex=True)
     for col in cols:
         res_tmp1 =[ x in icds for x in df[col]]
         new_df[col]=res_tmp1
