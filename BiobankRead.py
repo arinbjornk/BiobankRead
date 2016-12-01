@@ -61,6 +61,8 @@ def GetEIDs(n_subjects = 1000):
     EIDs = pd.read_csv(filename,usecols=['eid'],nrows=n_subjects)
     return EIDs
     
+Eids_all = GetEIDs(n_subjects=N)
+    
 def Get_ass_dates(n_subjects = 1000):
     # data frame of EIDs
     var = 'Date of attending assessment centre'
@@ -175,6 +177,37 @@ def all_related_vars(keyword=None,n_subjects=1000,dropNaN=True):
        if dropNaN:
            stuff_var = stuff_var[np.isfinite(stuff_var[tmp[1]])]  
     return stuff_var, stuff
+    
+def extract_many_vars(keywords=None,n_subjects=1000,dropNaN=False,spaces=False,baseline_only=False):
+    # extract variables for several pre-specified var. names 
+    # returns one single df with eids and each variables as columns
+    if len(keywords) >1:
+        main_Df = pd.DataFrame(columns =['eid'])
+        main_Df['eid'] = Eids_all['eid']
+        for var in keywords:
+            DBP = extract_variable(var,n_subjects)
+            if spaces:
+                b,k,a = var.partition(' ')
+                var = b
+            DBP = rename_columns(DBP,var)
+            if dropNaN:
+            # drop subjects with no reported illness
+                tmp = list(DBP.columns.values)
+                DBP = DBP[np.isfinite(DBP[tmp[1]])]    
+            main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
+    else:
+       #print stuff[0]
+       main_Df = extract_variable(projectID,studyID,keywords[0],n_subjects)
+       tmp = list(main_Df.columns.values)
+       if dropNaN:
+           main_Df = main_Df[np.isfinite(main_Df[tmp[1]])]
+    # drop columns of data not collected at baseline 
+    if baseline_only:
+        cols = main_Df.columns
+        keep = ['_0.' in x for x in cols]
+        keep[0] = True # always keep eid column
+        main_Df = main_Df[cols[keep]]
+    return main_Df
 
 def BP_aver_visit(df=None,Type='Systolic'):
     # average BP at each visit 
@@ -392,6 +425,29 @@ def METhday(df=None):
     df_t['VtT_PA'] = tmp #[0 if x !=x else x for x in tmp]
     df_t = df_t[['eid','METhday','VtT_PA']]
     return df_t 
+    
+def urine_Kawasaki(df=None,target='Sodium'):
+    # calculates 24h estimate from spot Na/Potassium secretion in urine
+    # df should be: ['eid','age','weight','height','sex','Sodium','Potassium','Creatinine']
+    # target = sodium or potassium
+    coeff = np.zeros(shape=(2,4))
+    coeff[0,:] = [-12.63,15.12,7.39,-79.9] # women
+    coeff[1,:] =[-4.72,8.58,5.09,-74.5] # men
+    target_df = df[target]
+    Cr = df['Creatinine']
+    df_new = pd.DataFrame(columns=['eid'])
+    df_new['eid'] = df['eid']
+    df_tmp = pd.DataFrame(columns=['eid'])
+    df_tmp['eid'] = df['eid']
+    for i in range(2):
+        tmp_df = df[df['sex']==i]
+        sub_coeff = coeff[i,:]
+        predicted = sub_coeff[0]*tmp_df['age']+sub_coeff[1]*tmp_df['weight']+sub_coeff[2]*tmp_df['height']+sub_coeff[3]
+        res = 16.3*np.sqrt(target_df/Cr)*predicted
+        df_tmp[str(i)]=res
+    df_new['24h_'+target] = df_tmp[df_tmp.columns[1::]].sum(axis=1)
+    return df_new
+    
  
  ################## HES data extraction + manipulation ##############################
 def CVD_files(types='ICD10',what='stroke'):
