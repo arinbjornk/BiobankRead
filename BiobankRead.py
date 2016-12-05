@@ -507,24 +507,28 @@ def selfreported_CVD(option='diagnosis',type='CAD',stack=True):
         return res2
    
 # define global variable
-if options == "All":
-   ## codes - all CVD
-    codes_icd10 = ICD10_CVD(option='diagnosis')
-    codes_icd9 = ICD10_CVD(option='icd9')
-    codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
-    codes_OPCS = ICD10_CVD(option='OPCS')
-    codes_SR = selfreported_CVD(option='diagnosis')
-    codes_Death = ICD10_CVD(option='death')
-    final_str="CVD"
-else:
-   ## codes - CAD, PAD or stroke only 
-    codes_icd10 = ICD10_CVD(option='diagnosis',type=options,stack=False)
-    codes_icd9 = ICD10_CVD(option='icd9',type=options,stack=True)
-    codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
-    codes_OPCS = ICD10_CVD(option='OPCS',type=options,stack=False)
-    codes_SR = selfreported_CVD(option='diagnosis',type=options,stack=False)
-    codes_Death = ICD10_CVD(option='death',type=options,stack=False)
-    final_str=options
+def generate_codes(options):
+    if options == "All":
+       ## codes - all CVD
+        codes_icd10 = ICD10_CVD(option='diagnosis')
+        codes_icd9 = ICD10_CVD(option='icd9')
+        codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
+        codes_OPCS = ICD10_CVD(option='OPCS')
+        codes_SR = selfreported_CVD(option='diagnosis')
+        codes_Death = ICD10_CVD(option='death')
+        final_str="CVD"
+    else:
+       ## codes - CAD, PAD or stroke only 
+        codes_icd10 = ICD10_CVD(option='diagnosis',type=options,stack=False)
+        codes_icd9 = ICD10_CVD(option='icd9',type=options,stack=True)
+        codes_icd9=[('%s' % x).rstrip('0').rstrip('.') for x in codes_icd9] #remove superfluous decimal precision
+        codes_OPCS = ICD10_CVD(option='OPCS',type=options,stack=False)
+        codes_SR = selfreported_CVD(option='diagnosis',type=options,stack=False)
+        codes_Death = ICD10_CVD(option='death',type=options,stack=False)
+        final_str=options
+    return codes_icd10,codes_icd9,codes_OPCS,codes_SR,codes_Death,final_str
+    
+codes_icd10,codes_icd9,codes_OPCS,codes_SR,codes_Death,final_str = generate_codes(options)
     
 def ICD10_match(df=None,cols=None,icds=codes_icd10):
     # find input ICD10 codes in specified columns from input dataframe
@@ -584,10 +588,9 @@ def code_match_HES(df=None,cols=None,icds=None,opt='All',which='diagnosis'):
         new_df_2 = df[res_tmp]
         return new_df_2
         
-def CVD_match_HES(df=None,cols=None,icds=codes_icd10,icd_old=codes_icd9,opcs=codes_OPCS,opt='All'):
+def CVD_type_match_HES(df=None,cols=None,icds=codes_icd10,icd_old=codes_icd9,opcs=codes_OPCS):
     # find input ICD10 & OPCS codes in specified columns from input Series
     # USe only on'HES' extrated directly from HES.tsv file
-    # opt= ALL or cvd_only
     if type(icds) is pd.core.series.Series:
         icds = icds.tolist()
         icds = [x for x in icds if str(x) != 'nan']
@@ -617,12 +620,30 @@ def CVD_match_HES(df=None,cols=None,icds=codes_icd10,icd_old=codes_icd9,opcs=cod
     #print len(res_tmp2)
     ## union of the 2
     res_tmp = [max(x,y,z) for (x,y,z) in zip(res_tmp1,res_tmp2,res_tmp3)]
-    if opt == 'All':
-        new_df[cols] = res_tmp
-        return new_df
-    else:
-        new_df_2 = df[res_tmp]
-        return new_df_2
+    new_df_2 = df[res_tmp]
+    return new_df_2
+    
+def CVD_match_HES(df=None,cols=None):
+    cats = ['CAD','PAD','stroke']
+    df_new = pd.DataFrame(columns=['eid'])
+    df_new['eid'] = Eids_all['eid']
+    df_new2 = pd.DataFrame(columns=['eid'])
+    df_new2['eid'] = df['eid']
+    for c in cats:
+        codes_icd10,codes_icd9,codes_OPCS,codes_SR,codes_Death,final_str = generate_codes(c)
+        tmp_df = CVD_type_match_HES(df,cols,icds=codes_icd10,icd_old=codes_icd9,opcs=codes_OPCS)
+        #discart missing values in admission date
+        tmp_df=tmp_df.dropna(subset=['admidate'])
+        #get unique eids for subjects with CVD HES records
+        eids_CVD = tmp_df['eid'].tolist()
+        eids_CVD = list(set(eids_CVD))
+        df_new[c] = [e in eids_CVD for e in Eids_all['eid']]
+        # keep admission dates
+        df_new2[c] = tmp_df['admidate']
+    df_new['CVD']=df_new[['CAD','PAD','stroke']].sum(axis=1)
+    df_new2 = df_new2.dropna(how='all',axis=0,subset=df_new2.columns[1::])
+    return df_new,df_new2
+    
     
     
 def SR_match(df=None,cols=None,icds=codes_SR):
