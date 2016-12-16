@@ -11,6 +11,7 @@ import re # RegEx
 import urllib2
 import numpy as np
 from datetime import datetime
+import os.path
 
 projectID=IDmain
 studyID=IDsub
@@ -28,7 +29,12 @@ def files_path(x=None,y=None,opt='html'):
     #x = project ID
     #y = study ID
     #opt = html or csv
-    return 'D:\Uk Biobank\Application '+x+'\R'+y+'\ukb'+y+'.'+opt
+    location = 'D:\Uk Biobank\Application '+x+'\R'+y+'\ukb'+y+'.'+opt
+    try:
+        return location
+    except ValueError:
+        print 'file location incorrectly specified'
+        return
    
 html_file = files_path(x=projectID,y=studyID)
     
@@ -448,12 +454,36 @@ def urine_Kawasaki(df=None,target='Sodium'):
     df_new['24h_'+target] = df_tmp[df_tmp.columns[1::]].sum(axis=1)
     return df_new
     
- 
+def remove_outliers(df=None,cols=None,lim=4,one_sided=False):
+    # remove outliers from data frame, for each variable
+    # cols= specify which variables
+    # lim = how many std away
+    # one_sided: trim both small/large values, or only large varlues
+    if cols is None:
+        cols = df.columns
+        cols = cols[1::] # remove eids
+    new_Df = df
+    for var in cols:
+        if not one_sided:
+            new_Df=new_Df[((new_Df[var]-new_Df[var].mean())/new_Df[var].std()).abs()<lim]
+        else:
+            new_Df=new_Df[((new_Df[var]-new_Df[var].mean())/new_Df[var].std())<lim]
+    return new_Df
+    
+
  ################## HES data extraction + manipulation ##############################
+
+
 def CVD_files(types='ICD10',what='stroke'):
         # types = ICD10 or SR
         # what = stroke of OPCS
-    return "D:\Uk Biobank\HES data\\"+what+types+'.csv'
+    final_name = "D:\Uk Biobank\HES data\\"+what+types+'.csv'
+    is_File = os.path.isfile(final_name)
+    if is_File:
+        return final_name
+    else:
+        print "file does not exist"
+        return 
     
 def ICD10_CVD(option='diagnosis',type='CAD',stack=True):
     # option 'diagnosis' or 'OPCS' 
@@ -636,11 +666,16 @@ def CVD_match_HES(df=None,cols=None):
         tmp_df=tmp_df.dropna(subset=['admidate'])
         #get unique eids for subjects with CVD HES records
         eids_CVD = tmp_df['eid'].tolist()
-        eids_CVD = list(set(eids_CVD))
-        df_new[c] = [e in eids_CVD for e in Eids_all['eid']]
+        tmp2_df = pd.DataFrame(columns=['eid'])
+        eids = list(set(eids_CVD))
+        #df_new[c] = [e in eids_CVD for e in Eids_all['eid']]
+        tmp2_df['eid']=eids
+        tmp2_df[c] = [1 for x in tmp2_df['eid']]
+        df_new = pd.merge(df_new,tmp2_df,on='eid',how='outer')
+        df_new[c]=df_new[c].fillna(value=0)
         # keep admission dates
         df_new2[c] = tmp_df['admidate']
-    df_new['CVD']=df_new[['CAD','PAD','stroke']].sum(axis=1)
+    df_new['CVD']=df_new[['CAD','PAD','stroke']].max(axis=1)
     df_new2 = df_new2.dropna(how='all',axis=0,subset=df_new2.columns[1::])
     return df_new,df_new2
     
