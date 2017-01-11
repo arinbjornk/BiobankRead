@@ -436,6 +436,8 @@ def urine_Kawasaki(df=None,target='Sodium'):
     # calculates 24h estimate from spot Na/Potassium secretion in urine
     # df should be: ['eid','age','weight','height','sex','Sodium','Potassium','Creatinine']
     # target = sodium or potassium
+    # ref: ' a simple method for estimating 24h urinary Na and K',
+    #       Kawasaki et al, Cli & Exp Pharm & Phys, 20,7-14, 1993
     coeff = np.zeros(shape=(2,4))
     coeff[0,:] = [-12.63,15.12,7.39,-79.9] # women
     coeff[1,:] =[-4.72,8.58,5.09,-74.5] # men
@@ -445,13 +447,20 @@ def urine_Kawasaki(df=None,target='Sodium'):
     df_new['eid'] = df['eid']
     df_tmp = pd.DataFrame(columns=['eid'])
     df_tmp['eid'] = df['eid']
+    if target is 'Sodium':
+        c = 16.3
+    else:
+        c = 7.2
     for i in range(2):
         tmp_df = df[df['sex']==i]
         sub_coeff = coeff[i,:]
         predicted = sub_coeff[0]*tmp_df['age']+sub_coeff[1]*tmp_df['weight']+sub_coeff[2]*tmp_df['height']+sub_coeff[3]
-        res = 16.3*np.sqrt(target_df/Cr)*predicted
+        res = c*np.sqrt(target_df/Cr*predicted)
         df_tmp[str(i)]=res
-    df_new['24h_'+target] = df_tmp[df_tmp.columns[1::]].sum(axis=1)
+        #print sum(df_tmp[str(i)]==0)
+    #print df_tmp.describe()
+    #df_new['24h_'+target] = df_tmp[df_tmp.columns[1::]].sum(axis=1)
+    df_new['24h_'+target] =pd.concat([df_tmp['0'].dropna(), df_tmp['1'].dropna()]).reindex_like(df_new)
     return df_new
     
 def remove_outliers(df=None,cols=None,lim=4,one_sided=False):
