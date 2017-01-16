@@ -76,7 +76,8 @@ def Get_ass_dates(n_subjects = 1000):
     return Ds
 
 def extract_variable(variable=None,
-                     n_subjects = 1000):
+                     n_subjects = 1000,
+                     baseline_only=False):
     filename = files_path(x=projectID,y=studyID,opt='csv')
     ### extract fields 
     soup =Global_soup
@@ -127,17 +128,18 @@ def extract_variable(variable=None,
             key.append(tmp)
         Sub_list[var_names]=key
     ###
-    df_dict = {}
     my_range = []
     #for name in var_names:
     my_range = Sub_list[var_names]
     my_range.append('eid') # Encoded anonymised participant ID
     everything = pd.read_csv(filename,usecols=my_range,nrows=n_subjects)#na_filter=False)
-    #everything.dropna(axis=1, how='all', inplace=True)
-    #everything.dropna(axis=0, how='all', inplace=True)
-    #everything = pd.concat([everything,EIDs])
-    df_dict = everything
-    return df_dict
+        # drop columns of data not collected at baseline 
+    if baseline_only:
+        cols = everything.columns
+        keep = ['_0.' in x for x in cols]
+        keep[0] = True # always keep eid column
+        everything= everything[cols[keep]]
+    return everything
     
 def illness_codes_categories(data_coding=6):
     ## Get dictionary of disease codes
@@ -184,7 +186,8 @@ def all_related_vars(keyword=None,n_subjects=1000,dropNaN=True):
            stuff_var = stuff_var[np.isfinite(stuff_var[tmp[1]])]  
     return stuff_var, stuff
     
-def extract_many_vars(keywords=None,n_subjects=1000,dropNaN=False,spaces=False,baseline_only=False):
+def extract_many_vars(keywords=None,n_subjects=1000,
+                      dropNaN=False,spaces=False,baseline_only=False):
     # extract variables for several pre-specified var. names 
     # returns one single df with eids and each variables as columns
     if len(keywords) >1:
@@ -203,16 +206,10 @@ def extract_many_vars(keywords=None,n_subjects=1000,dropNaN=False,spaces=False,b
             main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
     else:
        #print stuff[0]
-       main_Df = extract_variable(projectID,studyID,keywords[0],n_subjects)
+       main_Df = extract_variable(projectID,studyID,keywords[0],n_subjects,baseline_only)
        tmp = list(main_Df.columns.values)
        if dropNaN:
            main_Df = main_Df[np.isfinite(main_Df[tmp[1]])]
-    # drop columns of data not collected at baseline 
-    if baseline_only:
-        cols = main_Df.columns
-        keep = ['_0.' in x for x in cols]
-        keep[0] = True # always keep eid column
-        main_Df = main_Df[cols[keep]]
     return main_Df
 
 def BP_aver_visit(df=None,Type='Systolic'):
@@ -234,6 +231,10 @@ def BP_aver_visit(df=None,Type='Systolic'):
     
 def confounders_gen(more_vars = [],
                     n_subjects=1000):
+    # creates a dictionary of conventional confounding variables
+    # more can be added through the 'more_vars' input 
+    # output = dictionary with dfs, 1 df per variable
+    # output dfs need to be further processed before analysis
     conf_names = ['Body mass index (BMI)','Year of birth','Ethnic background','Sex']
     if len(more_vars)>0:
         if len(more_vars)>1:
@@ -245,17 +246,20 @@ def confounders_gen(more_vars = [],
     #print conf_names
     for var in conf_names:
         tmp = extract_variable(var,n_subjects)
-        if var == 'Year of birth': # substract from 2016 to get Age
-            now = datetime.now()
-            this_yr = now.year
-            tmp['34-0.0'] -= this_yr
-            tmp['34-0.0'] *= -1
-            var = 'Age'
         tmp = rename_columns(df=tmp,key=var)
         df_new[var] = tmp
-    conf_names.remove('Year of birth')
-    conf_names.append('Age')
     return df_new,conf_names
+    
+def find_Age(df=None):
+    # find age of subjects based on Year(assessment)-Year(birth)
+    # input = df with "Year of birth"
+        Ass_dates = Get_ass_dates(n_subjects=N)
+        Ass_dates = Ass_dates[Ass_dates.columns[0:2]]
+        Ass_dates['Ass_yr']=[float(x[0:4]) for x in Ass_dates[Ass_dates.columns[1]]]
+        df= pd.merge(df,Ass_dates[['eid','Ass_yr']],on='eid',how='outer')
+        df[df.columns[1]] = [float(x) for x in df[df.columns[1]]]
+        df['Age'] = (df['Ass_yr']-df[df.columns[1]])
+        return df
     
 def rename_conf(df=None):
     # rename columns of confounders df with sensible stuff
