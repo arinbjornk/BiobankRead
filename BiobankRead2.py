@@ -417,7 +417,7 @@ def remove_outliers(df=None,cols=None,lim=4,one_sided=False):
  ################## HES data extraction + manipulation ##############################
 ###################################################################################
 
-#ICD10file = [y for y in allfiles if 'ICD10' in y][0]
+ICD10file = [y for y in allfiles if 'ICD10' in y][0]
      
 def HES_tsv_read(filename=None,var='All',n=None):
     ## opens HES file, usually in the form of a .tsv file
