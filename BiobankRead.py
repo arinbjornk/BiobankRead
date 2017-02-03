@@ -118,7 +118,7 @@ def extract_variable(variable=None,
         # drop columns of data not collected at baseline 
     if baseline_only:
         cols = everything.columns
-        keep = ['_0.' in x for x in cols]
+        keep = ['-0.' in x for x in cols]
         keep[0] = True # always keep eid column
         everything= everything[cols[keep]]
     return everything
@@ -552,7 +552,8 @@ def generate_codes(options):
         codes_Death = ICD10_CVD(option='death',type=options,stack=False)
         final_str=options
     return codes_icd10,codes_icd9,codes_OPCS,codes_SR,codes_Death,final_str
-    
+
+options = 'All'    
 codes_icd10,codes_icd9,codes_OPCS,codes_SR,codes_Death,final_str = generate_codes(options)
     
 def ICD10_match(df=None,cols=None,icds=codes_icd10):
