@@ -35,6 +35,10 @@ def makeSoup():
     
 Global_soup = makeSoup()
 
+def search_in_list(ls=None,key=None):
+    #search keyword in list
+    return [x for x in ls if re.search(key,str(x))]
+
 def All_variables():
     soup = Global_soup
     allrows = soup.findAll('tr')
@@ -205,21 +209,34 @@ def extract_many_vars(keywords=None,n_subjects=1000,
            main_Df = main_Df[np.isfinite(main_Df[tmp[1]])]
     return main_Df
 
-def Mean_per_visit(df=None):
+def Mean_per_visit(df=None,dropnan=False):
     # average of one variable at each visit
-    # input= df with variable of interest only
-    # use only if multiple measurements available
-    Tmp = list(df.columns.values)
-    vists_rnd = [1,3,5]
-    visits = ['visit-1', 'visit-2', 'visit-3']
-    cols = visits.append('eid')
-    new_df = pd.DataFrame(columns=cols)
-    u = 0
+    # input= df with variables of interest
+    # only relevant if multiple measurements available
+    Tmp = list(df.columns.tolist())
+    # isolate variables
+    tmp2 = list(set([x.partition('_')[0] for x in Tmp]))
+    tmp2 = [y for y in tmp2 if 'eid' not in y] # remove eid column
+    # initiate output
+    new_df = pd.DataFrame(columns=['eid'])
     new_df['eid']=df['eid']
-    for k in vists_rnd:
-        tmp = df[[Tmp[k],Tmp[k+1]]].mean(axis=1)
-        new_df[visits[u]] = tmp
-        u +=1 
+    # for each variable in df
+    for var in tmp2:
+        sub = [x for x in Tmp if var+'_' in x]
+        sub_rounds = [x.partition('_')[2] for x in sub]
+        rounds = [x.partition('.')[0] for x in sub_rounds]
+        u=0
+        df_sub = pd.DataFrame(columns=['eid'])
+        df_sub['eid']=df['eid']
+        # for each visit
+        for t in range(int(max(rounds))+1):
+            per_round = [x for x in sub if '_'+str(t) in x]
+            if dropnan:
+                df_sub[var+str(u)] = df[per_round].mean(axis=1,skipna=False)
+            else:
+                df_sub[var+str(u)] = df[per_round].mean(axis=1)
+            u +=1
+        new_df = pd.merge(new_df,df_sub,on='eid')
     return new_df
     
 def confounders_gen(more_vars = [],
@@ -228,7 +245,7 @@ def confounders_gen(more_vars = [],
     # more can be added through the 'more_vars' input 
     # output = dictionary with dfs, 1 df per variable
     # output dfs need to be further processed before analysis
-    conf_names = ['Body mass index (BMI)','Year of birth','Ethnic background','Sex']
+    conf_names = ['Body mass index (BMI)','Age when attended assessment centre','Ethnic background','Sex']
     if len(more_vars)>0:
         if len(more_vars)>1:
             for items in more_vars:

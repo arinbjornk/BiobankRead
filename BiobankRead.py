@@ -217,7 +217,8 @@ def confounders_gen(more_vars = [],
     # more can be added through the 'more_vars' input 
     # output = dictionary with dfs, 1 df per variable
     # output dfs need to be further processed before analysis
-    conf_names = ['Body mass index (BMI)','Year of birth','Ethnic background','Sex']
+    conf_names = ['Body mass index (BMI)','Age when attended assessment centre',
+                    'Ethnic background','Sex']
     if len(more_vars)>0:
         if len(more_vars)>1:
             for items in more_vars:
@@ -694,8 +695,8 @@ def SR_match(df=None,cols=None,icds=codes_SR):
     for col in cols:
         res_tmp1 =[ x in icds for x in df[col]]
         new_df[col]=res_tmp1
-    new_df2 = pd.DataFrame(columns=['eid','SR_CVD'])
-    new_df2['SR_CVD'] = new_df[cols].sum(axis=1)
+    new_df2 = pd.DataFrame(columns=['eid','SR_res'])
+    new_df2['SR_res'] = new_df[cols].sum(axis=1)
     new_df2['eid'] = df['eid']
     return new_df2
         
