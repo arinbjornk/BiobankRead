@@ -496,18 +496,18 @@ def HES_code_match(df=None,cols=None,icds=None,which='diagnosis'):
 def HES_first_time(df=None):
     # finds the earliest admission date in HES data for each subject
     #   df should be HES file dataframe outout from "HES_code_match"
-    eids_unique = df.index.tolist()
+    eids_unique = df['eid'].tolist()
     eids_unique = list(set(eids_unique))
     #cols = get_cols_names(df)
     new_Df = pd.DataFrame(columns=['eid','first_admidate'])
    #new_Df['eid']=df['eid']
     res = []
     for ee in eids_unique:
-        tmp =  df[df.index==ee]
+        tmp =  df[df['eid']==ee]
         res.append(len(tmp))
         x = tmp['admidate'].min()
         df2=pd.DataFrame([[ee,x]],columns=['eid','first_admidate'])
-        new_Df=new_Df.append(df2,ignore_index=True)
+        new_Df=new_Df.append(df2)#,ignore_index=True)
     return new_Df
     
 def HES_after_assess(df=None,assess_dates=None):
