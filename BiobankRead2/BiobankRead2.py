@@ -12,8 +12,6 @@ import urllib2
 import numpy as np
 import os
 
-thisplace = os.getcwd()
-allfiles = os.listdir(thisplace)
 
 html_file = namehtml
 csv_file = namecsv
@@ -434,7 +432,9 @@ def remove_outliers(df=None,cols=None,lim=4,one_sided=False):
  ################## HES data extraction + manipulation ##############################
 ###################################################################################
 
-ICD10file = [y for y in allfiles if 'ICD10' in y][0]
+this_dir, this_filename = os.path.split(__file__)
+DATA_PATH = os.path.join(this_dir, "data", "ICD10_UKB.tsv")
+
      
 def HES_tsv_read(filename=None,var='All',n=None):
     ## opens HES file, usually in the form of a .tsv file
@@ -452,7 +452,7 @@ def find_ICD10_codes(select=None):
     ##          of all deseases known to medicine
     ## input: select - general code for one class of deseases
     ## output: icd10 - codes of all deseases associated with class
-    tmp = HES_tsv_read(ICD10file)
+    tmp = HES_tsv_read(DATA_PATH)
     codes_all = tmp['coding']
     icd10 = []
     for categ in select:
@@ -495,7 +495,7 @@ def HES_code_match(df=None,cols=None,icds=None,which='diagnosis'):
   
 def HES_first_time(df=None):
     # finds the earliest admission date in HES data for each subject
-    #   df should be HES file dataframe outout from "code_match_HES"
+    #   df should be HES file dataframe outout from "HES_code_match"
     eids_unique = df.index.tolist()
     eids_unique = list(set(eids_unique))
     #cols = get_cols_names(df)

@@ -12,29 +12,42 @@ import __builtin__
 __builtin__.namehtml='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.html'
 __builtin__.namecsv='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.csv'
 __builtin__.N = 502641  
-import pandas as pd
-import sys
-import imp
-sys.path.append('C:\Users\Deborah\Google Drive\Postdoc\python\BiobankRead\\')
-import BiobankRead2
-imp.reload(BiobankRead2)
+import BiobankRead2.BiobankRead2 as UKBr
 
 #Find out what variables are included in the selected project
-All_vars = BiobankRead2.Vars
+All_vars =  UKBr.Vars
 
 # Is there data on Alcohol intake, for ex. ?
-Alc = BiobankRead2.search_in_list(ls=BiobankRead2.Vars,key='Alcohol')
-Alc_var = BiobankRead2.extract_variable(Alc[2],n_subjects=N)
-Alc_var = BiobankRead2.rename_columns(Alc_var,Alc[2])
+Alc = UKBr.search_in_list(ls=All_vars,key='Alcohol')
+Alc_var = UKBr.extract_variable(Alc[2],n_subjects=N)
+Alc_var = UKBr.rename_columns(Alc_var,Alc[2])
 
 # put all the alcohol variables in one df
-Alc_var_all  = BiobankRead2.extract_many_vars(Alc,N,baseline_only=False)
+Alc_var_all  = UKBr.extract_many_vars(Alc,N,baseline_only=False)
 
 # compute average over each visit
 # BP data more interesting for this 
-BP = BiobankRead2.search_in_list(ls=BiobankRead2.Vars,key='blood pressure')
+BP = UKBr.search_in_list(ls=All_vars,key='blood pressure')
 BP = [x for x in BP if 'automated' in x]
-BP_var  = BiobankRead2.extract_many_vars(BP,N,baseline_only=False)
-BP_aver  = BiobankRead2.Mean_per_visit(df=BP_var,dropnan=True)
+BP_var  = UKBr.extract_many_vars(BP,N,baseline_only=False)
+BP_aver  = UKBr.Mean_per_visit(df=BP_var,dropnan=True)
 BP_aver.describe()
 
+## Functionalities related to HES file extractions
+# after downloading HES file from online platform, unpack it as df
+filename = 'D:\Uk Biobank\HES data\ukb_HES_10035.tsv'
+everything_HES = UKBr.HES_tsv_read(filename=filename)
+# Let's find all disease related to acute renal problems: N0-N3 +N99
+select = ['N'+str(n) for n in range(4)]##
+select.append('N99')               
+RD_ICD10 = UKBr.find_ICD10_codes(select=select) # there should be ~240 codes in this variable
+# Find all HES admission with acute renal disease as diagnostic
+HES_RD = UKBr.HES_code_match(df=everything_HES,icds=RD_ICD10,which='diagnosis')
+HES_RD = HES_RD[['eid','diag_icd10','admidate']]
+# Which subjects had admissions before attending a UKB assessment centre?
+# step 1: load assessment centre dates
+Ass_dates = UKBr.assess_dates
+Ass_dates = Ass_dates[Ass_dates.columns.tolist()[0:2]]
+# step 2: Find when subjects were first ever admitted
+HES_sub = HES_RD[['eid','admidate']]
+First_times = UKBr.HES_first_time(HES_sub)

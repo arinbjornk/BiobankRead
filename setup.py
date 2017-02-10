@@ -18,4 +18,7 @@ setup(name='BiobankRead',
       url='',
       download_url = '',
       plong_description=open('README.txt').read(),
+      package_data = {
+        # include aux data files:
+        'BiobankRead': ['*.txt', '*.tsv'],},
      )
