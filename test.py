@@ -44,6 +44,7 @@ RD_ICD10 = UKBr.find_ICD10_codes(select=select) # there should be ~240 codes in 
 # Find all HES admission with acute renal disease as diagnostic
 HES_RD = UKBr.HES_code_match(df=everything_HES,icds=RD_ICD10,which='diagnosis')
 HES_RD = HES_RD[['eid','diag_icd10','admidate']]
+HES_RD = HES_RD.dropna(subset=['admidate'])
 # Which subjects had admissions before attending a UKB assessment centre?
 # step 1: load assessment centre dates
 Ass_dates = UKBr.assess_dates
