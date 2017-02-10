@@ -118,7 +118,7 @@ def extract_variable(variable=None,
         # drop columns of data not collected at baseline 
     if baseline_only:
         cols = everything.columns
-        keep = ['-0.' in x for x in cols]
+        keep = ['0.' in x for x in cols]
         keep[0] = True # always keep eid column
         everything= everything[cols[keep]]
     return everything
@@ -176,7 +176,7 @@ def extract_many_vars(keywords=None,n_subjects=1000,
         main_Df = pd.DataFrame(columns =['eid'])
         main_Df['eid'] = Eids_all['eid']
         for var in keywords:
-            DBP = extract_variable(var,n_subjects)
+            DBP = extract_variable(var,n_subjects,baseline_only)
             if spaces:
                 b,k,a = var.partition(' ')
                 var = b
