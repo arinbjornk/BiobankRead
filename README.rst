@@ -30,9 +30,11 @@ Required input
 ################################
 Required input: files location of the .csv and .html files, and number of subjects N.
 
- -.csv: ukb<release_code>.csv, the main data file produced after extraction from the .enc file.
+ - .csv: ukb<release_code>.csv, the main data file produced after extraction from the .enc file.
  
- -.html: associated information file, generated alongside the.csv file with all references to varaibles available.
+ - .html: associated information file, generated alongside the.csv file with all references to varaibles available.
+ 
+ - N: number of subjects to extract data for. It is recommended to set this to the total number of subjects available in the project (identical to number of rows in .csv file)
 
 
 These should be defined before loading the package as follows :
