@@ -14,14 +14,19 @@ The package takes avantage of the data frame tools in pandas and of the regex fa
 ################################
 Required input 
 ################################
- Required input: files location of the .csv and .html files, and number of subjects N.
-.csv: ukb<release_code>.csv, the main data file produced after extraction from the .enc file
-.html: associated information file, generated alongside the.csv file with all references to varaibles available 
-These should be defined before loading the packageas follow:
-   import __builtin__
-   __builtin__.namehtml='<file_location>.html'
-   __builtin__.namecsv='<file_location>.csv' 
-   __builtin__.N= n
+Required input: files location of the .csv and .html files, and number of subjects N.
+ -.csv: ukb<release_code>.csv, the main data file produced after extraction from the .enc file
+ -.html: associated information file, generated alongside the.csv file with all references to varaibles available 
+
+
+These should be defined before loading the package as follows:
+.. code-block::
+
+ import __builtin__
+ __builtin__.namehtml='<file_location>.html'
+ __builtin__.namecsv='<file_location>.csv' 
+ __builtin__.N= n
+ import BiobankRead2.BiobankRead2 as UKBr
 
 
 ################################
