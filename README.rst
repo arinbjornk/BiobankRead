@@ -48,14 +48,12 @@ These should be defined before loading the package as follows :
  import BiobankRead2.BiobankRead2 as UKBr
 
 ############
-Current functionalities:
+Current functionalities
 ############
-To DO
+The packages provides the following functions:
 
-############
-Future updates:
-############
-To DO
+- extract_variable: extract values for one variable into a pandas dataframe. It first parses the html file for an input keyword, finds corresponding columns, and extract those into a pandas dataframe
+- Get_ass_dates: returns data frame of dates subjects attended the first assessment centre (known as "baseline")
 
 ################################
 Thanks
