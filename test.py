@@ -7,8 +7,6 @@ Created on Fri Jan 27 17:29:32 2017
 
 import __builtin__
 
-##global IDmain
-##global IDsub
 __builtin__.namehtml='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.html'
 __builtin__.namecsv='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.csv'
 __builtin__.N = 502641  

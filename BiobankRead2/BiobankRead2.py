@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jan 27 12:24:41 2017
+Created Jan 27 2017
 
-@author: Deborah
+@author: Deborah Schneider-Luftman, ICL (UK),
+@contact: ds711@ic.ac.uk
+
 """
 
 import pandas as pd
@@ -13,13 +15,26 @@ import numpy as np
 import os
 
 
+## Required input: files location of the .csv and .html files, and number of
+# subjects N
+# .csv: ukb<release_code>.csv, the main data file produced after extraction from 
+#       the .enc file
+# .html: associated information file, generated alongside the.csv file with all
+#       references to varaibles available 
+## These should be defined before loading the packageas follow:
+#   import __builtin__
+#   __builtin__.namehtml='<file_location>.html'
+#   __builtin__.namecsv='<file_location>.csv' 
+#   __builtin__.N= n
+##
+
 html_file = namehtml
 csv_file = namecsv
 
-if not isinstance(html_file,str) & isinstance(csv_file,str):
+if not isinstance(html_file,str) and isinstance(csv_file,str):
     raise NameError('files location misspecified')
     
-if not  os.path.isabs(html_file) &  os.path.isabs(csv_file):
+if not  os.path.isabs(html_file) and  os.path.isabs(csv_file):
      raise ValueError('file location incorrectly specified')
 
 def special_char():
@@ -38,6 +53,7 @@ def search_in_list(ls=None,key=None):
     return [x for x in ls if re.search(key,str(x))]
 
 def All_variables():
+    # reads and returns names of all variables in the data file
     soup = Global_soup
     allrows = soup.findAll('tr')
     res = []
@@ -54,7 +70,7 @@ def All_variables():
     return res
 
 def GetEIDs(n_subjects = 1000):
-    # data frame of EIDs
+    # data frame of EIDs of all subjects in data files
     filename = csv_file
     EIDs = pd.read_csv(filename,usecols=['eid'],nrows=n_subjects)
     return EIDs
@@ -65,6 +81,9 @@ Eids_all = GetEIDs(n_subjects=N)
 def extract_variable(variable=None,
                      n_subjects = 1000,
                      baseline_only=False):
+     # extract values for one variable into a pandas dataframe
+    # 1) parses html files, finds column #
+    # 2) extracts column # from .csv file into a dataframe
     filename = csv_file
     ### extract fields 
     soup =Global_soup
@@ -87,9 +106,9 @@ def extract_variable(variable=None,
             new_var += i
         variable = new_var
     ##
-    userrows = [t for t in allrows if re.search('>'+variable+'<',str(t))]
+    userrows = [ts for ts in allrows if re.search('>'+variable+'<',str(ts))]
     if not userrows:
-        userrows = [t for t in allrows if re.search('>'+variable+'.<',str(t))]
+        userrows = [ts for ts in allrows if re.search('>'+variable+'.<',str(ts))]
     #print userrows
     userrows_str = str(userrows[0])
     #x,y,z=userrows.partition('</span></td><td rowspan=')
@@ -123,13 +142,13 @@ def extract_variable(variable=None,
         # drop columns of data not collected at baseline 
     if baseline_only:
         cols = everything.columns
-        keep = ['-0.' in x for x in cols]
+        keep = ['-0.' in xs for xs in cols]
         keep[0] = True # always keep eid column
         everything= everything[cols[keep]]
     return everything
     
 def Get_ass_dates(n_subjects = 1000):
-    # data frame of EIDs
+    # returns data frame of date subjects attended the first assessment centre
     var = 'Date of attending assessment centre'
     Ds = extract_variable(var,n_subjects)
     return Ds
@@ -137,7 +156,7 @@ def Get_ass_dates(n_subjects = 1000):
 assess_dates = Get_ass_dates(n_subjects=N)
     
 def codes_categories(data_coding=6):
-    ## Get dictionary of disease codes
+    ## returns data coding convention from online page
     link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='+str(data_coding)
     response = urllib2.urlopen(link)
     html = response.read()
@@ -162,7 +181,9 @@ def codes_categories(data_coding=6):
 Vars = All_variables()
    
 def all_related_vars(keyword=None,n_subjects=1000,dropNaN=True):
-    stuff = [t for t in Vars if re.search(keyword[1::],t)]#t.find(keyword[1::]) > -1]
+    # extracts all variables related to a keyword variable (input)
+    # returns one single df with eids and each variables as columns
+    stuff = [t for t in Vars if re.search(keyword[1::],t)]
     if len(stuff) >1:
         stuff_var = {}
         for var in stuff:
@@ -183,7 +204,7 @@ def all_related_vars(keyword=None,n_subjects=1000,dropNaN=True):
     
 def extract_many_vars(keywords=None,n_subjects=1000,
                       dropNaN=False,spaces=False,baseline_only=False):
-    # extract variables for several pre-specified var. names 
+    # extract_variable() for several variables at once
     # returns one single df with eids and each variables as columns
     if len(keywords) >1:
         main_Df = pd.DataFrame(columns =['eid'])
@@ -258,20 +279,9 @@ def confounders_gen(more_vars = [],
         df_new[var] = tmp
     return df_new,conf_names
     
-def find_Age(df=None):
-    # find age of subjects based on Year(assessment)-Year(birth)
-    # input = df with "Year of birth"
-        Ass_dates = Get_ass_dates(n_subjects=N)
-        Ass_dates = Ass_dates[Ass_dates.columns[0:2]]
-        Ass_dates['Ass_yr']=[float(x[0:4]) for x in Ass_dates[Ass_dates.columns[1]]]
-        df= pd.merge(df,Ass_dates[['eid','Ass_yr']],on='eid',how='outer')
-        df[df.columns[1]] = [float(x) for x in df[df.columns[1]]]
-        df['Age'] = (df['Ass_yr']-df[df.columns[1]])
-        return df
-    
 def rename_conf(df=None):
-    # rename columns of confounders df with sensible stuff
-    names_in = get_cols_names(df)
+    # rename columns of confounders df with shorter name
+    names_in = df.columns.tolist()
     names_out = []
     for n in names_in:
         b,k,a = n.partition('_')
@@ -290,24 +300,17 @@ def rename_conf(df=None):
     return df,names_out
 
     
-def get_cols_names(df=None):
-    #returns columns names of pandas df in list
-    cols = df.columns.values
-    Cols = []
-    for c in cols:
-        Cols.append(c)
-    return Cols
-    
 def df_mean(df=None,key=None):
     # returns mean of data values excluding eid
-    cols = get_cols_names(df=df)
+    cols = df.columns.tolist()
     new_df = pd.DataFrame(columns=['eid',key])
     new_df['eid'] = df['eid']
     new_df[key] = df[cols[1::]].mean(axis=1)
     return new_df
     
 def vars_by_visits(col_names=None,visit=0):
-    # returns variables names associated with initial assessment (0), 1st (1) and 2nd (2) re-visit
+    # returns variables names associated with initial assessment (0),
+    # 1st (1) and 2nd (2) re-visit
     V1 =[]
     for var in col_names:
         res = re.search('(.*?)-'+str(visit)+'.(\d+)',var)
@@ -317,7 +320,7 @@ def vars_by_visits(col_names=None,visit=0):
 
 def rename_columns(df=None,key=None,option_str=True):
     # rename the columns of a data frame with something sensible
-    col_names = get_cols_names(df)
+    col_names = df.columns.tolist()
     col_new = ['eid']
     for k in range(3):
         V0 = vars_by_visits(col_names,k)
@@ -333,6 +336,8 @@ def rename_columns(df=None,key=None,option_str=True):
     return df_new
     
 def find_DataCoding(variable=None):
+    # Finds data coding associated with a variable, based on information in the
+    # .html file
     ### extract fields 
     soup = Global_soup
     allrows = soup.findAll('tr')
@@ -354,7 +359,7 @@ def find_DataCoding(variable=None):
             new_var += i
         variable = new_var
     ##
-    userrows = [t for t in allrows if re.search('>'+variable+'<',str(t))]
+    userrows = [ts for ts in allrows if re.search('>'+variable+'<',str(ts))]
     row_str = str(userrows[0])
     foo = row_str.find('Uses data-coding')
     if foo is None:
@@ -368,7 +373,8 @@ def find_DataCoding(variable=None):
     html = response.read()
     soup = bs4.BeautifulSoup(html,'html.parser')
     allrows = soup.findAll('tr')
-    rows_again = [t for t in allrows if re.search('class=\"int\">(.?)*</td><td class=\"txt\">(.?)*</td>',str(t))]
+    rows_again = [ts for ts in allrows if 
+        re.search('class=\"int\">(.?)*</td><td class=\"txt\">(.?)*</td>',str(ts))]
     schema = pd.DataFrame(columns=['key','value'])
     u = 0
     for item in rows_again:
@@ -395,11 +401,11 @@ def re_wildcard(strs=None):
     return res
     
 def Datacoding_match(df=None,key=None,name=None):
-    # find key din df with known data coding
+    # find key-value in the input df with known data coding
     # find datacoding with find_DataCoding() before using this funct.
     if type(key) == str:
         key = int(key)
-    cols = get_cols_names(df)
+    cols = df.columns.tolist()
     # remove eids
     cols = cols[1::]
     new_df = pd.DataFrame(columns=cols)
@@ -476,7 +482,7 @@ def HES_code_match(df=None,cols=None,icds=None,which='diagnosis'):
         icds = icds.tolist()
         icds = [x for x in icds if str(x) != 'nan']
     if cols is None:
-        cols = get_cols_names(df)
+        cols = df.columns.tolist()
     # remove eids
     cols = cols[1::]
     if which == 'diagnosis':

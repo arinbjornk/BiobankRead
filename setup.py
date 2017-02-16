@@ -2,12 +2,15 @@
 """
 Created on Fri Feb 10 11:52:44 2017
 
-@author: Deborah
 """
 
 #!/usr/bin/env python
 
-from distutils.core import setup
+try:
+	from setuptools import setup
+except:
+    from distutils.core import setup
+#from distutils.core import setup
 
 setup(name='BiobankRead',
       packages = ['BiobankRead2'],
@@ -18,6 +21,9 @@ setup(name='BiobankRead',
       url='',
       download_url = '',
       plong_description=open('README.txt').read(),
+      install_requires=[
+	"bs4", "numpy", "pandas", "urllib2"
+	],
       package_data = {
         # include aux data files:
         'BiobankRead': ['*.txt', '*.tsv'],},
