@@ -21,7 +21,9 @@ Approved investigators will have access to data, as part of a project, which the
 
 After the data has been unpacked locally, there should be two resulting files, a .csv file and a .hmtl file. The csv file contains all the data associated with the project the investigator is working on. The html file explains how that csv file is structured. Conventionally, researchers would open and read the html file, search for a variable, look up its corresponding column number, then extract that column number using STATA, R , Python or similar program.
 
-Now, 
+For each variable, there is between 1 to 28 measurements, across three assessment centre days (baseline, first  and second re-visits). So for one variable, there can be up to 84 associated columns. 
+
+This python package was created with the idea of easing the intricacy of extracting, sorting and analysing such type of data.
 
 ################################
 Required input 
