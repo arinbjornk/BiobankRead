@@ -1,7 +1,11 @@
 ===========
 Biobank Read
 ===========
-“On the planet Earth, man had always assumed that he was more intelligent than dolphins because he had achieved so much—the wheel, New York, wars and so on—whilst all the dolphins had ever done was muck about in the water having a good time. But conversely, the dolphins had always believed that they were far more intelligent than man—for precisely the same reasons.”
+
+BiobankRead is a package that aims to extract readily usable data-frames of specified variables from UKBiobank extracted files. It provides faster and easier pre-processing tools in Python of UKBiobank clinical/phenotypical data, which is otherwise known for its intricate complexity. The functionalities of this package support both main project data and HES records data.
+
+This python package is intended to be usable as part of processing and analysis pipelines. 
+
 
 ################################
 Overview
@@ -42,6 +46,10 @@ XXXXX
 Future updates:
 ############
 XXXXX
+
+-----
+“On the planet Earth, man had always assumed that he was more intelligent than dolphins because he had achieved so much—the wheel, New York, wars and so on—whilst all the dolphins had ever done was muck about in the water having a good time. But conversely, the dolphins had always believed that they were far more intelligent than man—for precisely the same reasons.”
+-----
 
 
 .. _UKBiobank: http://www.ukbiobank.ac.uk/
