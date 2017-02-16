@@ -15,8 +15,9 @@ The package takes avantage of the data frame tools in pandas and of the regex fa
 Required input 
 ################################
 Required input: files location of the .csv and .html files, and number of subjects N.
- -.csv: ukb<release_code>.csv, the main data file produced after extraction from the .enc file
- -.html: associated information file, generated alongside the.csv file with all references to varaibles available 
+ -.csv: ukb<release_code>.csv, the main data file produced after extraction from the .enc file.
+ 
+ -.html: associated information file, generated alongside the.csv file with all references to varaibles available.
 
 
 These should be defined before loading the package as follows:
