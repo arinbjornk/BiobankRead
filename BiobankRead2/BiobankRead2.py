@@ -477,7 +477,7 @@ def find_ICD10_codes(select=None):
 def HES_code_match(df=None,cols=None,icds=None,which='diagnosis'):
     # find input ICD10 codes in specified columns from input df
     # USe only on'HES' extrated directly from HES.tsv file
-    # opt= ALL of cvd_only
+    # which: 'diagnosis', 'oper4' or 'diag_icd9'
     if type(icds) is pd.core.series.Series:
         icds = icds.tolist()
         icds = [x for x in icds if str(x) != 'nan']
