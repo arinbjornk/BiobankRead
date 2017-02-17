@@ -20,9 +20,9 @@ setup(name='BiobankRead',
       author_email='ds711@imperial.ac.uk',
       url='',
       download_url = '',
-      plong_description=open('README.txt').read(),
+      plong_description=open('README.rst').read(),
       install_requires=[
-	"bs4", "numpy", "pandas", "urllib2"
+	"bs4", "numpy", "pandas", "urllib3"
 	],
       package_data = {
         # include aux data files:

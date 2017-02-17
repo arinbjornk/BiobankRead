@@ -10,7 +10,7 @@ Created Jan 27 2017
 import pandas as pd
 import bs4 #beautifulsoup4 package
 import re # RegEx 
-import urllib2
+import urllib3
 import numpy as np
 import os
 
@@ -158,7 +158,7 @@ assess_dates = Get_ass_dates(n_subjects=N)
 def codes_categories(data_coding=6):
     ## returns data coding convention from online page
     link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='+str(data_coding)
-    response = urllib2.urlopen(link)
+    response = urllib3.urlopen(link)
     html = response.read()
     soup = bs4.BeautifulSoup(html,'html.parser')
     allrows = soup.findAll('tr')
@@ -369,7 +369,7 @@ def find_DataCoding(variable=None):
     res = test.group(0)
     x,y,z=res.partition('href="')
     link,y,u=z.partition('">')
-    response = urllib2.urlopen(link)
+    response = urllib3.urlopen(link)
     html = response.read()
     soup = bs4.BeautifulSoup(html,'html.parser')
     allrows = soup.findAll('tr')
