@@ -77,6 +77,11 @@ HES data
 =========
 
 - HES_tsv_read: opens and reads .tsv HES file, and returns the data in a dataframe.
+- find_ICD10_codes: finds and returns all ICD10 codes associated with a class of disease codes.
+- HES_code_match: finds all instances related to one or several disease codes input, across the diagnosis or operations columns of the HES data.
+- HES_first_time: finds the earliest admission date in HES data for all subjects that have HES records.
+- HES_after_assess: returns a boolean for whether subjects had HES records after attenting the baseline assessment centre.
+- HES_before_assess: returns a boolean for whether subjects had HES records before attenting the baseline assessment centre.
 
 
 
