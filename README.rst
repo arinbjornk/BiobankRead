@@ -56,24 +56,30 @@ These should be defined before loading the package as follows :
 ############
 Current functionalities
 ############
-The packages provides the following functions:
+The packages provides the following functions;
 
-Extracting specified variables:
+Extracting variables from .csv file:
 
 - extract_variable: extract values for one variable into a pandas dataframe. It first parses the html file for an input keyword, finds corresponding columns, and extract those into a pandas dataframe.
 - all_related_vars: extracts all variables related to a keyword variable input, and returns them in one single dataframe.
 - extract_many_vars: performs extract_variable() for several pre-specified variables, and returns them in one single dataframe. 
-
-Other:
-
 - Get_ass_dates: returns data frame of dates subjects attended the first assessment centre (known as "baseline").
+
+Extracting confounding variables:
+
+- confounders_gen: returns a dictionary of dataframes for a range of classical confounders (BMI, Age, Ethnicity and Sex). More confounders can be added optionally.
+- rename_conf: shortens the names of columns in a dataframe of confounders.
+
+Data-codings:
+
 - find_DataCoding: finds the data coding associated with a variable, if it exists.
 - codes_categories: returns data coding convention from online page, for any data coding number.
 - Datacoding_match: finds a key-value in a variable's dataframe, if it has a known data coding.
+
+Functions on extracted variables:
+
 - Mean_per_visit: evaluates the average of a variable with multiple measurement for each visit, returns a dataframe with 1 column for each visit. Only relevant if multiple measurements available.
 - df_mean: returns the mean of a variable in a dataframe, across all its columns.
-- confounders_gen: returns a dictionary of dataframes for a range of classical confounders (BMI, Age, Ethnicity and Sex). More confounders can be added optionally.
-- rename_conf: shortens the names of columns in a dataframe of confounders.
 - vars_by_visits: returns all the column names associated with a visit round: initial assessment (0), 1st (1) and 2nd (2) re-visit.
 - rename_columns: renames the columns of a data frame for variable, while preserving the order and number of measurements and visits.
 - remove_outliers: removes outliers from a variable's data frame, based on some input standard deviation (default = 4).
