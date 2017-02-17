@@ -17,7 +17,7 @@ The package takes avantage of the data frame tools in pandas and of the regex fa
 ################################
 UKBiobank data
 ################################
-Approved investigators will have access to data, as part of a project, which they have to download in .enc format. The .enc file (enc for encrypted) has to be unpacked locally using helper programs that can be downloaded from the same webpage. Detailed instructions are available on the portal ("Data Collection", "Essential Information", "Accessing your data", "Downloading, converting and using your dataset").
+Approved investigators will have access to data, as part of a project, which they have to download in .enc format. The .enc file (enc for encrypted) has to be unpacked locally using helper programs that can be downloaded from the same webpage. Detailed instructions are available on the portal_ ("Data Collection", "Essential Information", "Accessing your data", "Downloading, converting and using your dataset").
 
 After the data has been unpacked locally, there should be two resulting files, a .csv file and a .hmtl file. The csv file contains all the data associated with the project the investigator is working on. The html file explains how that csv file is structured. Conventionally, researchers would open and read the html file, search for a variable, look up its corresponding column number, then extract that column number using STATA, R , Python or similar program.
 
@@ -27,7 +27,9 @@ This python package was created with the idea of easing the intricacy of extract
 
 HES data
 =========
-HES data refers to hospitalisation records of the subjects in UKBiobank.
+HES (Hospital Episode Statistics) data refers to incidentce of hospitalisation anywhere in England for subjects in UKBiobank, as far back as 1997. It contains information about dates of admission/release/operation, diagnosis coded in ICD10 (or ICD9 if prior to 1995), and/or operations & procedure (OPCS) code.
+
+This data can be accessed through the portal_ in the following pathway: "Data Collection", "Downloads", "Data Portal", "Connect". This gives access to a database where the data is kept, and has to be queried using SQL.
 
 ################################
 Required input 
