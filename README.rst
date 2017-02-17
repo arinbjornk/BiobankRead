@@ -27,7 +27,7 @@ This python package was created with the idea of easing the intricacy of extract
 
 HES data
 =========
-HES (Hospital Episode Statistics) data refers to incidentce of hospitalisation anywhere in England for subjects in UKBiobank, as far back as 1997. It contains information about dates of admission/release/operation, diagnosis coded in ICD10 (or ICD9 if prior to 1995), and/or operations & procedure (OPCS) code.
+HES (Hospital Episode Statistics) data refers to incidentce of hospitalisation anywhere in England for subjects in UKBiobank, as far back as 1997. It contains information about dates of admission/release/operation, diagnosis coded in ICD10 (or ICD9 if prior to 2000), as well as operations & procedure (OPCS) codes when applicable.
 
 This data can be accessed through the portal_ in the following pathway: "Data Collection", "Downloads", "Data Portal", "Connect". This gives access to a database where the data is kept, and has to be queried using SQL.
 
@@ -58,8 +58,27 @@ Current functionalities
 ############
 The packages provides the following functions:
 
-- extract_variable: extract values for one variable into a pandas dataframe. It first parses the html file for an input keyword, finds corresponding columns, and extract those into a pandas dataframe
-- Get_ass_dates: returns data frame of dates subjects attended the first assessment centre (known as "baseline")
+- extract_variable: extract values for one variable into a pandas dataframe. It first parses the html file for an input keyword, finds corresponding columns, and extract those into a pandas dataframe.
+- Get_ass_dates: returns data frame of dates subjects attended the first assessment centre (known as "baseline").
+- find_DataCoding: finds the data coding associated with a variable, if it exists.
+- codes_categories: returns data coding convention from online page, for any data coding number.
+- Datacoding_match: finds a key-value in a variable's dataframe, if it has a known data coding.
+- all_related_vars: extracts all variables related to a keyword variable input, and returns them in one single dataframe.
+- extract_many_vars: performs extract_variable() for several pre-specified variables, and returns them in one single dataframe. 
+- Mean_per_visit: evaluates the average of a variable with multiple measurement for each visit, returns a dataframe with 1 column for each visit. Only relevant if multiple measurements available.
+- df_mean: returns the mean of a variable in a dataframe, across all its columns.
+- confounders_gen: returns a dictionary of dataframes for a range of classical confounders (BMI, Age, Ethnicity and Sex). More confounders can be added optionally.
+- rename_conf: shortens the names of columns in a dataframe of confounders.
+- vars_by_visits: returns all the column names associated with a visit round: initial assessment (0), 1st (1) and 2nd (2) re-visit.
+- rename_columns: renames the columns of a data frame for variable, while preserving the order and number of measurements and visits.
+- remove_outliers: removes outliers from a variable's data frame, based on some input standard deviation (default = 4).
+
+HES data
+=========
+
+- HES_tsv_read: opens and reads .tsv HES file, and returns the data in a dataframe.
+
+
 
 ################################
 Thanks
