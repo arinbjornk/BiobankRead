@@ -32,6 +32,16 @@ HES (Hospital Episode Statistics) data refers to incidentce of hospitalisation a
 This data can be accessed through the portal_ in the following pathway: "Data Collection", "Downloads", "Data Portal", "Connect". This gives access to a database where the data is kept, and has to be queried using SQL.
 
 ################################
+Installation
+################################
+Simply go through pip install:
+
+.. code-block::
+ 
+ $ pip install BiobankRead
+
+
+################################
 Required input 
 ################################
 Required input: files location of the .csv and .html files, and number of subjects N.
