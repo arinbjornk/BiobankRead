@@ -15,6 +15,14 @@ BiobankRead aims to provide python-based tools for the extraction, cleaning and 
 The package takes avantage of the data frame tools in pandas and of the regex facilities in re.
 
 ################################
+Citation
+################################
+To use this package in published work, please cite us using the following DOI:
+
+.. image:: https://zenodo.org/badge/73500060.svg
+   :target: https://zenodo.org/badge/latestdoi/73500060
+
+################################
 UKBiobank data
 ################################
 Approved investigators will have access to data, as part of a project, which they have to download in .enc format. The .enc file (enc for encrypted) has to be unpacked locally using helper programs that can be downloaded from the same webpage. Detailed instructions are available on the portal_ ("Data Collection", "Essential Information", "Accessing your data", "Downloading, converting and using your dataset").
@@ -117,3 +125,4 @@ Much gratitude is owed to Dr Bill Crum, who contributed to this project and help
 
 .. _UKBiobank: http://www.ukbiobank.ac.uk/
 .. _portal: https://amsportal.ukbiobank.ac.uk/
+.. _zonodo: https://zenodo.org/badge/73500060.svg
