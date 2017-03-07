@@ -118,6 +118,10 @@ HES data
 - HES_before_assess: returns a boolean for whether subjects had HES records before attenting the baseline assessment centre.
 
 
+################################
+Acknowledgement
+################################
+BiobankRead was developed as part of the ITMAT Data Science Group and the Epidemiology & Biostatistics department at Imperial College London. 
 
 ################################
 Thanks
