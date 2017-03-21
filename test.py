@@ -50,3 +50,10 @@ Ass_dates = Ass_dates[Ass_dates.columns.tolist()[0:2]]
 # step 2: Find when subjects were first ever admitted
 HES_sub = HES_RD[['eid','admidate']]
 First_times = UKBr.HES_first_time(HES_sub)
+
+## Find records of Self-reported diseases in df
+illness = UKBr.search_in_list(ls=All_vars,key='illness code')
+illness_var = UKBr.extract_variable(illness[0],n_subjects=N)
+illness_var = UKBr.rename_columns(illness_var,'illness_code')
+CV_illness = ['1095','1070','1065']
+SR_cvd = UKBr.SR_code_match(df=illness_var,cols=None,icds=CV_illness)

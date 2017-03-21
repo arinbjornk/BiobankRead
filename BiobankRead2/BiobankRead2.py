@@ -498,6 +498,29 @@ def HES_code_match(df=None,cols=None,icds=None,which='diagnosis'):
     res_tmp =[ x in icds for x in df_mini]
     new_df_2 = df[res_tmp]
     return new_df_2
+    
+def SR_code_match(df=None,cols=None,icds=None):
+    # find input SR desease codes in specified columns from input dataframe
+    # type = (self reported)
+    # insert disease codes as numbers not as strings! ex: 1095, not '1095'
+    df = df.fillna(value=0) # replace nan by a non-disease code
+    if type(icds) is pd.core.series.Series:
+        icds = icds.tolist()
+    icds = [int(x) for x in icds if str(x) != 'nan']
+    if cols is None:
+        cols = df.columns.tolist()
+        # remove eids
+        cols = cols[1::]
+    new_df = pd.DataFrame(columns=cols)
+    new_df['eid'] = df['eid']
+    df = df.replace(np.nan,' ', regex=True)
+    for col in cols:
+        res_tmp1 =[ x in icds for x in df[col]]
+        new_df[col]=res_tmp1
+    new_df2 = pd.DataFrame(columns=['eid','SR_res'])
+    new_df2['SR_res'] = new_df[cols].sum(axis=1)
+    new_df2['eid'] = df['eid']
+    return new_df2
   
 def HES_first_time(df=None):
     # finds the earliest admission date in HES data for each subject
