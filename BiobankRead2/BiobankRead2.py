@@ -177,14 +177,14 @@ class BiobankRead():
         symbols = BiobankRead.special_char
 
         # DOES THIS WORK THE SAME AS THE NEXT SECTION?
-        
-        newvar = list(variable)
-        lnewvar = len(newvar)
-        u = 0
-        for v in range(0, lnewvar):
-            if newvar[v] in symbols:
-                continue
-            u = u + 1
+        varlist = list(variable)
+        lvarlist = len(varlist)
+        newvar = []
+        for v in range(0, lvarlist):
+            if varlist[v] in symbols:
+                newvar.extend(['\\', varlist[v]])
+            else:
+                newvar.extend([varlist[v]])
         variable = ''.join(newvar)
                 
         '''
@@ -203,7 +203,8 @@ class BiobankRead():
                     i = "\%s" % (variable[lim])
                 new_var += i
             variable = new_var
-        '''    
+        print variable
+        '''
         ##
         #variable = variable.replace('\\', '\\\\')
 
@@ -449,12 +450,15 @@ class BiobankRead():
         ## search variable string for shitty characters
         symbols = BiobankRead.special_char
         
-        # DOES THIS WORK THE SAME AS THE NEXT SECTION?
-        newvar = list(variable)
-        lnewvar = len(newvar)
-        for v in range(0, lnewvar):
-            if newvar[v] in symbols:
-                newvar[v] = '\%s' % v
+        # DOES THIS WORK THE SAME AS THE NEXT SECTION?        
+        varlist = list(variable)
+        lvarlist = len(varlist)
+        newvar = []
+        for v in range(0, lvarlist):
+            if varlist[v] in symbols:
+                newvar.extend(['\\', varlist[v]])
+            else:
+                newvar.extend([varlist[v]])
         variable = ''.join(newvar)
         
         '''

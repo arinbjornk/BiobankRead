@@ -31,7 +31,6 @@ def main(argv = None):
     Alc = UKBr.search_in_list(ls=bbclass.Vars,key='Alcohol')
     Alc_var = bbclass.extract_variable(Alc[2])
     Alc_var = bbclass.rename_columns(Alc_var,Alc[2])
-    
     # put all the alcohol variables in one df
     Alc_var_all  = bbclass.extract_many_vars(Alc, baseline_only=False)
     
@@ -40,11 +39,12 @@ def main(argv = None):
     BP = UKBr.search_in_list(ls=bbclass.Vars,key='blood pressure')
     BP = [x for x in BP if 'automated' in x]
     BP_var  = bbclass.extract_many_vars(BP,baseline_only=False)
+
     BP_aver  = bbclass.Mean_per_visit(df=BP_var,dropnan=True)
     BP_aver.describe()
     
     print BP
-    print BP_var
+    #print BP_var
     print BP_aver
     
     return 0    
