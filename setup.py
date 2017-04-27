@@ -14,7 +14,7 @@ except:
 
 setup(name='BiobankRead',
       packages = ['BiobankRead2'],
-      version='1.1',
+      version='1.3',
       description='UKBiobank Python pre-processing',
       author='Deborah Schneider-luftman',
       author_email='ds711@imperial.ac.uk',

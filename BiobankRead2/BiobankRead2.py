@@ -142,7 +142,7 @@ def extract_variable(variable=None,
         # drop columns of data not collected at baseline 
     if baseline_only:
         cols = everything.columns
-        keep = ['-0.' in xs for xs in cols]
+        keep = ['_0.' in xs for xs in cols]
         keep[0] = True # always keep eid column
         everything= everything[cols[keep]]
     return everything
