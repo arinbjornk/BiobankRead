@@ -31,6 +31,7 @@ import os
 
 html_file = namehtml
 csv_file = namecsv
+N=n
 
 class BiobankRead():
     """ A class to parse data from UK BioBank archives.
@@ -61,15 +62,15 @@ class BiobankRead():
     code_link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='
 
     
-    def __init__(self, projectID, studyID, location=None, N=1000):
+    def __init__(self, location=None, N=n):# projectID, studyID
         
         # Set project and study IDs
-        if isinstance(projectID, int):
-            projectID = str(projectID)
-        if isinstance(studyID, int):
-            studyID = str(studyID)
-        self.projectID = projectID
-        self.studyID = studyID
+#        if isinstance(projectID, int):
+#            projectID = str(projectID)
+#        if isinstance(studyID, int):
+#            studyID = str(studyID)
+#        self.projectID = projectID
+#        self.studyID = studyID
         
         # Status
         self.OK = True
@@ -83,7 +84,8 @@ class BiobankRead():
             self.location = location
         
         # Construct the path to the html file
-        self.html_file = self.files_path()
+        self.html_file = html_file#self.files_path()
+        self.csv_file = csv_file#self.files_path()
         if self.html_file == None:
             print 'error - html location', location, 'not found'
             self.OK = False
@@ -115,21 +117,21 @@ class BiobankRead():
         self.assess_dates = self.Get_ass_dates()
         
     def status(self):
-        print 'projectID:', self.projectID
-        print 'studyID:', self.studyID
+#        print 'projectID:', self.projectID
+#        print 'studyID:', self.studyID
         print 'html:', self.html_file
         print 'Record number', self.N
         return
 
-    def files_path(self, opt='html'):
-        """Returns the path to the specified file-type or None if it can't be found"""
-        if opt not in ['csv', 'html']:
-            print ' opt must be one of \'csv\' or \'html\''
-            return None
-        location = os.path.join(self.location, self.projectID, 'R', self.studyID, 'ukb', self.studyID+'.'+opt)
-        if os.path.exists(location):
-            return location
-        return None
+#    def files_path(self, opt='html'):
+#        """Returns the path to the specified file-type or None if it can't be found"""
+#        if opt not in ['csv', 'html']:
+#            print ' opt must be one of \'csv\' or \'html\''
+#            return None
+#        location = os.path.join(self.location, self.projectID, 'R', self.studyID, 'ukb', self.studyID+'.'+opt)
+#        if os.path.exists(location):
+#            return location
+#        return None
 
     def makeSoup(self):
         """Parse the html into a nested data structure"""
@@ -152,12 +154,12 @@ class BiobankRead():
                     t = xx.find('<br>')
                     xx = xx[0:t]
                 res.append(xx)
-        return res;
+        return res
 
     def GetEIDs(self):
         """Return all the EIDs"""
         # data frame of EIDs
-        filename = self.files_path(opt='csv')
+        filename = self.csv_file 
         if filename == None:
             return None
         EIDs = pd.read_csv(filename, usecols=['eid'], nrows=self.N)
@@ -247,7 +249,7 @@ class BiobankRead():
         #for name in var_names:
         my_range = Sub_list[var_names]
         my_range.append('eid') # Encoded anonymised participant ID
-        filename = self.files_path(opt='csv')
+        filename = self.csv_file
         everything = pd.read_csv(filename,usecols=my_range,nrows=self.N)
         
         #na_filter=False)
