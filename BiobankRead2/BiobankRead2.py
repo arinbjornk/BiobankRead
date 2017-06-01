@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created Jan 27 2017
+Edited 01/06/2017 
 
 @author: Deborah Schneider-Luftman, ICL (UK),
 @contact: ds711@ic.ac.uk
