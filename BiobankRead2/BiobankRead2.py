@@ -91,7 +91,8 @@ class BiobankRead():
         
         # Variables in table
         # Populate by calling self.All_variables()
-        self.Vars = self.All_variables()
+        self.Vars = self.All_variables()['names']
+        self.data_types = self.All_variables()['types']
         
         # All EIDS
         # Populate by calling self.GetEIDs(n_subjects=N)
@@ -129,17 +130,25 @@ class BiobankRead():
         """Read all variable names in the table and return"""
         allrows = self.soup.findAll('tr')
         res = []
+        data_type = []
         for t in allrows:
-            res1=re.search('</span></td><td rowspan=(.*?)>(.*?)</td></tr>',str(t))
+            re_string = 'nowrap;\">(.*?)</span></td><td rowspan=\"(\d+)\">(.*?)</td></tr>'
+            #'</span></td><td rowspan=(.*?)>(.*?)</td></tr>'
+            res1=re.search(re_string,str(t))
             if not res1 is None:
                 res1 = res1.group(0)
-                x,y,z = res1.partition('">')
+                ## get variable data type
+                x1,y1,z1=res1.partition('nowrap;\">')
+                xx1,yy1,zz1=z1.partition('</span>')
+                data_type.append(xx1)
+                ## get variable name
+                x,y,z = zz1.partition('">')
                 xx,yy,zz = z.partition('</td></tr>')
                 if xx.find('<br>') > -1:
                     t = xx.find('<br>')
                     xx = xx[0:t]
                 res.append(xx)
-        return res
+        return {'names':res, 'types':data_type}
 
     def GetEIDs(self):
         """Return all the EIDs"""
@@ -271,6 +280,7 @@ class BiobankRead():
                 Group_names.append(aa)
         Groups = pd.Series(data=Group_codes,index=Group_names)
         return Groups
+        
            
     def all_related_vars(self, keyword=None, dropNaN=True):
         # extracts all variables related to a keyword variable (input)
@@ -678,5 +688,3 @@ class BiobankRead():
     def search_in_list(self,ls=None,key=None):
         #search keyword in list
         return [x for x in ls if re.search(key,str(x))]
-
- 
