@@ -62,15 +62,7 @@ class BiobankRead():
     code_link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='
 
     
-    def __init__(self, location=None, N=n):# projectID, studyID
-        
-        # Set project and study IDs
-#        if isinstance(projectID, int):
-#            projectID = str(projectID)
-#        if isinstance(studyID, int):
-#            studyID = str(studyID)
-#        self.projectID = projectID
-#        self.studyID = studyID
+    def __init__(self, location=None, N=n):
         
         # Status
         self.OK = True
@@ -90,7 +82,10 @@ class BiobankRead():
             print 'error - html location', location, 'not found'
             self.OK = False
             return
-
+        #HES file processing variables
+        this_dir, this_filename = os.path.split(__file__)
+        self.DATA_PATH = os.path.join(this_dir, "data", "ICD10_UKB.tsv")
+        
         # Parse html 
         self.soup = self.makeSoup()
         
@@ -122,16 +117,6 @@ class BiobankRead():
         print 'html:', self.html_file
         print 'Record number', self.N
         return
-
-#    def files_path(self, opt='html'):
-#        """Returns the path to the specified file-type or None if it can't be found"""
-#        if opt not in ['csv', 'html']:
-#            print ' opt must be one of \'csv\' or \'html\''
-#            return None
-#        location = os.path.join(self.location, self.projectID, 'R', self.studyID, 'ukb', self.studyID+'.'+opt)
-#        if os.path.exists(location):
-#            return location
-#        return None
 
     def makeSoup(self):
         """Parse the html into a nested data structure"""
@@ -255,8 +240,8 @@ class BiobankRead():
         #na_filter=False)
         # drop columns of data not collected at baseline 
         if baseline_only:
-            cols = everything.columns
-            keep = ['_0.' in x for x in cols]
+            cols = everything.columns#.tolist()
+            keep = ['0.' in x for x in cols]
             keep[0] = True # always keep eid column
             everything = everything[cols[keep]]
             
@@ -560,150 +545,138 @@ class BiobankRead():
 ###################################################################################
  ################## HES data extraction + manipulation ##############################
 ###################################################################################
-
-#this_dir, this_filename = os.path.split(__file__)
-#DATA_PATH = os.path.join(this_dir, "data", "ICD10_UKB.tsv")
-
      
-def HES_tsv_read(filename=None,var='All',n=None):
-    ## opens HES file, usually in the form of a .tsv file
-    ## outputs a pandas dataframe
-    everything_HES = pd.read_csv(filename,delimiter='\t',nrows=n)
-    #everything_HES=everything_HES.set_index('eid')
-    if var == 'All':    
-        return everything_HES
-    else:
-       sub_HES = everything_HES[var]
-       return sub_HES
+    def HES_tsv_read(self,filename=None,var='All',n=None):
+        ## opens HES file, usually in the form of a .tsv file
+        ## outputs a pandas dataframe
+        everything_HES = pd.read_csv(filename,delimiter='\t',nrows=n)
+        #everything_HES=everything_HES.set_index('eid')
+        if var == 'All':    
+            return everything_HES
+        else:
+           sub_HES = everything_HES[var]
+           return sub_HES
 
-def find_ICD10_codes(select=None):
-    ## extract ICD10 codes from a large, complete dictionary of ICD10 codes
-    ##          of all deseases known to medicine
-    ## input: select - general code for one class of deseases
-    ## output: icd10 - codes of all deseases associated with class
-    tmp = HES_tsv_read(DATA_PATH)
-    codes_all = tmp['coding']
-    icd10 = []
-    for categ in select:
-        Ns = [categ in x for x in codes_all]
-        tmp = codes_all[Ns]
-        for y in tmp:
-            icd10.append(y)
-    icd10 = [x for x in icd10 if 'Block' not in x]
-    return icd10
+    def find_ICD10_codes(self,select=None):
+        ## extract ICD10 codes from a large, complete dictionary of ICD10 codes
+        ##          of all deseases known to medicine
+        ## input: select - general code for one class of deseases
+        ## output: icd10 - codes of all deseases associated with class
+        tmp = self.HES_tsv_read(self.DATA_PATH)
+        codes_all = tmp['coding']
+        icd10 = []
+        for categ in select:
+            Ns = [categ in x for x in codes_all]
+            tmp = codes_all[Ns]
+            for y in tmp:
+                icd10.append(y)
+        icd10 = [x for x in icd10 if 'Block' not in x]
+        return icd10
     
-##### example: ICD10 codes associated with Cardiovasculas incidents
-    ### input: desease classes I2, I6, I7 and G4
-    ### t=['I2','I7','I6','G4']
-    ### codes_icd10 = find_ICD10_codes(t)
-     
-def HES_code_match(df=None,cols=None,icds=None,which='diagnosis'):
-    # find input ICD10 codes in specified columns from input df
-    # USe only on'HES' extrated directly from HES.tsv file
-    # which: 'diagnosis', 'oper4' or 'diag_icd9'
-    if type(icds) is pd.core.series.Series:
-        icds = icds.tolist()
-        icds = [x for x in icds if str(x) != 'nan']
-    if cols is None:
-        cols = df.columns.tolist()
-    # remove eids
-    cols = cols[1::]
-    if which == 'diagnosis':
-        icd = 'diag_icd10'
-    elif which == 'opcs':
-        icd = 'oper4'
-    else:
-        icd = 'diag_icd9'
-    new_df = pd.DataFrame(columns=cols)
-    new_df['eid'] = df['eid']
-    df_mini = df[icd].tolist()
-    #print df_mini
-    res_tmp =[ x in icds for x in df_mini]
-    new_df_2 = df[res_tmp]
-    return new_df_2
-    
-def SR_code_match(df=None,cols=None,icds=None):
-    # find input SR desease codes in specified columns from input dataframe
-    # type = (self reported)
-    # insert disease codes as numbers not as strings! ex: 1095, not '1095'
-    df = df.fillna(value=0) # replace nan by a non-disease code
-    if type(icds) is pd.core.series.Series:
-        icds = icds.tolist()
-    icds = [int(x) for x in icds if str(x) != 'nan']
-    if cols is None:
-        cols = df.columns.tolist()
+    ##### example: ICD10 codes associated with Cardiovasculas incidents
+        ### input: desease classes I2, I6, I7 and G4
+        ### t=['I2','I7','I6','G4']
+        ### codes_icd10 = find_ICD10_codes(t)
+         
+    def HES_code_match(self,df=None,cols=None,icds=None,which='diagnosis'):
+        # find input ICD10 codes in specified columns from input df
+        # USe only on'HES' extrated directly from HES.tsv file
+        # which: 'diagnosis', 'oper4' or 'diag_icd9'
+        if type(icds) is pd.core.series.Series:
+            icds = icds.tolist()
+            icds = [x for x in icds if str(x) != 'nan']
+        if cols is None:
+            cols = df.columns.tolist()
         # remove eids
         cols = cols[1::]
-    new_df = pd.DataFrame(columns=cols)
-    new_df['eid'] = df['eid']
-    df = df.replace(np.nan,' ', regex=True)
-    for col in cols:
-        res_tmp1 =[ x in icds for x in df[col]]
-        new_df[col]=res_tmp1
-    new_df2 = pd.DataFrame(columns=['eid','SR_res'])
-    new_df2['SR_res'] = new_df[cols].sum(axis=1)
-    new_df2['eid'] = df['eid']
-    return new_df2
-  
-def HES_first_time(df=None):
-    # finds the earliest admission date in HES data for each subject
-    #   df should be HES file dataframe outout from "HES_code_match"
-    eids_unique = df['eid'].tolist()
-    eids_unique = list(set(eids_unique))
-    #cols = get_cols_names(df)
-    new_Df = pd.DataFrame(columns=['eid','first_admidate'])
-   #new_Df['eid']=df['eid']
-    res = []
-    for ee in eids_unique:
-        tmp =  df[df['eid']==ee]
-        res.append(len(tmp))
-        x = tmp['admidate'].min()
-        df2=pd.DataFrame([[ee,x]],columns=['eid','first_admidate'])
-        new_Df=new_Df.append(df2)#,ignore_index=True)
-    return new_Df
-    
-def HES_after_assess(df=None,assess_dates=None):
-    # returns boolean : subject had HES records after baseline
-    # input dates needs to come from HES_first_time()
-    #   df should be HES file dataframe
-    eids = assess_dates['eid'].tolist()
-    DF = pd.DataFrame(columns=['eid','After','date_aft'])
-    for ee in eids:
-        tmp =  df[df.index==ee]
-        tmp_ass_date = assess_dates[assess_dates['eid']==ee]
-        tmp_ass_date=tmp_ass_date['assess_date'].iloc[0]
-        tmp2= tmp[tmp['admidate']>tmp_ass_date]
-        if len(tmp2)>0:
-            oo = True
-            x = tmp2['admidate'].min()
+        if which == 'diagnosis':
+            icd = 'diag_icd10'
+        elif which == 'opcs':
+            icd = 'oper4'
         else:
-            oo = False
-            x = 0
-        df2 = pd.DataFrame([[ee,oo,x]],columns=['eid','After','date_aft'])
-        DF = DF.append(df2)
-    return DF
+            icd = 'diag_icd9'
+        new_df = pd.DataFrame(columns=cols)
+        new_df['eid'] = df['eid']
+        df_mini = df[icd].tolist()
+        #print df_mini
+        res_tmp =[ x in icds for x in df_mini]
+        new_df_2 = df[res_tmp]
+        return new_df_2
+        
+    def SR_code_match(self,df=None,cols=None,icds=None):
+        # find input SR desease codes in specified columns from input dataframe
+        # type = (self reported)
+        # insert disease codes as numbers not as strings! ex: 1095, not '1095'
+        df = df.fillna(value=0) # replace nan by a non-disease code
+        if type(icds) is pd.core.series.Series:
+            icds = icds.tolist()
+        icds = [int(x) for x in icds if str(x) != 'nan']
+        if cols is None:
+            cols = df.columns.tolist()
+            # remove eids
+            cols = cols[1::]
+        new_df = pd.DataFrame(columns=cols)
+        new_df['eid'] = df['eid']
+        df = df.replace(np.nan,' ', regex=True)
+        for col in cols:
+            res_tmp1 =[ x in icds for x in df[col]]
+            new_df[col]=res_tmp1
+        new_df2 = pd.DataFrame(columns=['eid','SR_res'])
+        new_df2['SR_res'] = new_df[cols].sum(axis=1)
+        new_df2['eid'] = df['eid']
+        return new_df2
+      
+    def HES_first_time(self,df=None):
+        # finds the earliest admission date in HES data for each subject
+        #   df should be HES file dataframe outout from "HES_code_match"
+        eids_unique = df['eid'].tolist()
+        eids_unique = list(set(eids_unique))
+        #cols = get_cols_names(df)
+        new_Df = pd.DataFrame(columns=['eid','first_admidate'])
+       #new_Df['eid']=df['eid']
+        res = []
+        for ee in eids_unique:
+            tmp =  df[df['eid']==ee]
+            res.append(len(tmp))
+            x = tmp['admidate'].min()
+            df2=pd.DataFrame([[ee,x]],columns=['eid','first_admidate'])
+            new_Df=new_Df.append(df2)#,ignore_index=True)
+        return new_Df
+        
+    def HES_after_assess(self,df=None,assess_dates=None):
+        # returns boolean : subject had HES records after baseline
+        # input dates needs to come from HES_first_time()
+        #   df should be HES file dataframe
+        eids = assess_dates['eid'].tolist()
+        DF = pd.DataFrame(columns=['eid','After','date_aft'])
+        for ee in eids:
+            tmp =  df[df.index==ee]
+            tmp_ass_date = assess_dates[assess_dates['eid']==ee]
+            tmp_ass_date=tmp_ass_date['assess_date'].iloc[0]
+            tmp2= tmp[tmp['admidate']>tmp_ass_date]
+            if len(tmp2)>0:
+                oo = True
+                x = tmp2['admidate'].min()
+            else:
+                oo = False
+                x = 0
+            df2 = pd.DataFrame([[ee,oo,x]],columns=['eid','After','date_aft'])
+            DF = DF.append(df2)
+        return DF
+        
+    def HES_before_assess(self,dates=None):
+        # returns boolean : subject had HES records before baseline
+        # input dates needs to come from HES_first_time()
+        DF = pd.DataFrame(columns=['eid','Before'])
+        DF['eid'] = dates['eid']
+        assess_date = dates['assess_date'].tolist()
+        res=[a>b for (a,b) in zip(assess_date,dates['first_admidate'].tolist())]
+        DF['Before'] = res
+        return DF
     
-def HES_before_assess(dates=None):
-    # returns boolean : subject had HES records before baseline
-    # input dates needs to come from HES_first_time()
-    DF = pd.DataFrame(columns=['eid','Before'])
-    DF['eid'] = dates['eid']
-    assess_date = dates['assess_date'].tolist()
-    res=[a>b for (a,b) in zip(assess_date,dates['first_admidate'].tolist())]
-    DF['Before'] = res
-    return DF
+        
+    def search_in_list(self,ls=None,key=None):
+        #search keyword in list
+        return [x for x in ls if re.search(key,str(x))]
 
-    
-def search_in_list(ls=None,key=None):
-    #search keyword in list
-    return [x for x in ls if re.search(key,str(x))]
-
-    
-    
-        
-    
-    
-        
-        
-    
-    
+ 
