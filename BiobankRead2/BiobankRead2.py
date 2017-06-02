@@ -284,7 +284,7 @@ class BiobankRead():
            
     def all_related_vars(self, keyword=None, dropNaN=True):
         # extracts all variables related to a keyword variable (input)
-        # returns one single df with eids and each variables as columns
+        # returns one single df with eids and each 
     
         stuff = [t for t in self.Vars if re.search(keyword[1::],t)]#t.find(keyword[1::]) > -1]
         if len(stuff) > 1:
