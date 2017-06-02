@@ -75,7 +75,7 @@ These should be defined before loading the package as follows :
 ############
 Examples
 ############
-Have a look at the text.py (textpy_) document included in this repo to get an idea of how various functions can and/or should be used!
+Have a look at the text-class.py (textpy_) document included in this repo to get an idea of how various functions can and/or should be used!
 
 ############
 Current functionalities
@@ -136,4 +136,4 @@ Much gratitude is owed to Dr Bill Crum, who contributed to this project and help
 .. _UKBiobank: http://www.ukbiobank.ac.uk/
 .. _portal: https://amsportal.ukbiobank.ac.uk/
 .. _zonodo: https://zenodo.org/badge/73500060.svg
-.. _textpy: https://github.com/saphir746/BiobankRead/blob/master/test.py
+.. _textpy: https://github.com/saphir746/BiobankRead/blob/master/test-class.py
