@@ -9,7 +9,7 @@ import __builtin__
 
 __builtin__.namehtml='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.html'
 __builtin__.namecsv='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.csv'
-__builtin__.N = 502641  
+__builtin__.n = 502641  
 import BiobankRead2.BiobankRead2 as UKBr
 
 # MAIN
@@ -20,8 +20,7 @@ def main(argv = None):
 
     # Instantiate class
     location = 'Z:\\EABOAGYE\\Users\\wcrum\\Projects\\UKBB\\UKBB-data'
-    projectID, studyID = 10035, 8546
-    bbclass = UKBr.BiobankRead(projectID=projectID, studyID=studyID, location=location, N=1000)
+    bbclass = UKBr.BiobankRead(location=location)
     if not bbclass.OK:
         print 'error creating bbclass'
         return 1
