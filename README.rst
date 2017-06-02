@@ -1,5 +1,5 @@
 ################################
-Biobank Read - latest version: 1.3
+Biobank Read - latest version: 2.0
 ################################
 
 BiobankRead is a package that pulls out data from UKBiobank extracted files and turns it into readily usable data-frames for any specified variables. 
@@ -70,6 +70,7 @@ These should be defined before loading the package as follows :
  __builtin__.namecsv='<file_location>.csv' 
  __builtin__.N= n
  import BiobankRead2.BiobankRead2 as UKBr
+ BiobankRead=UKBr.BiobankRead()
 
 ############
 Examples
