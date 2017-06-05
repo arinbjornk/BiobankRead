@@ -314,7 +314,7 @@ class BiobankRead():
             main_Df = pd.DataFrame(columns =['eid'])
             main_Df['eid'] = self.Eids_all['eid']
             for var in keywords:
-                DBP = self.extract_variable(variable=var)
+                DBP = self.extract_variable(variable=var, baseline_only=baseline_only)
                 if spaces:
                     b,k,a = var.partition(' ')
                     var = b
