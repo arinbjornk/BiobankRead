@@ -110,7 +110,7 @@ class BiobankRead():
         
         # All attendance dates
         # QUERY - WHERE IS N SET?
-        self.assess_dates = self.Get_ass_dates()
+        #self.assess_dates = self.Get_ass_dates()
         
     def status(self):
 #        print 'projectID:', self.projectID
@@ -386,7 +386,7 @@ class BiobankRead():
     
     def rename_conf(self, df=None):
         # rename columns of confounders df with sensible stuff
-        names_in = self.get_cols_names(df)
+        names_in = df.columns.tolist()
         names_out = []
         for n in names_in:
             b,k,a = n.partition('_')
