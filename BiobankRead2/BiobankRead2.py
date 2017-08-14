@@ -14,6 +14,7 @@ import re # RegEx
 import urllib3
 import numpy as np
 import os
+from datetime import datetime
 
 
 ## Required input: files location of the .csv and .html files, and number of
@@ -85,9 +86,17 @@ class BiobankRead():
         #HES file processing variables
         this_dir, this_filename = os.path.split(__file__)
         self.DATA_PATH = os.path.join(this_dir, "data", "ICD10_UKB.tsv")
+        self.DATA_PATH_2 = os.path.join(this_dir, "data","ICD9_codes.csv")        
+        
         
         # Parse html 
         self.soup = self.makeSoup()
+        
+        #Time/date variables
+        self.date_format = "%Y-%m-%d"
+        self.end_follow_up = "2016-02-15"
+        self.start_follow_up = "2006-05-10"
+        self.Time_end = datetime.strptime(self.end_follow_up, self.date_format)
         
         # Variables in table
         # Populate by calling self.All_variables()
@@ -148,6 +157,15 @@ class BiobankRead():
                     t = xx.find('<br>')
                     xx = xx[0:t]
                 res.append(xx)
+        res2 = []
+        for x in res:
+            if x.find('<br/>') >-1:
+                 t = x.find('<br/>')
+                 xx = x[0:t]
+                 res2.append(xx)
+            else:
+                 res2.append(x)
+        res = res2
         return {'names':res, 'types':data_type}
 
     def GetEIDs(self):
@@ -582,6 +600,21 @@ class BiobankRead():
                 icd10.append(y)
         icd10 = [x for x in icd10 if 'Block' not in x]
         return icd10
+        
+    def find_ICD9_codes(self,select=None):
+        ## extract ICD9 codes from a large, complete dictionary of ICD9 codes
+        ##          of all deseases known to medicine
+        ## input: select - general code for one class of deseases
+        ## output: icd9 - codes of all deseases associated with class
+        tmp = pd.read_csv(self.DATA_PATH_2)
+        codes_all = tmp['DIAGNOSIS CODE']
+        icd9 = []
+        for categ in select:
+            Ns = [str(categ) in str(y)[0:len(str(categ))] for y in codes_all]
+            tmp = codes_all[Ns]
+            for y in tmp:
+                icd9.append(y)
+        return icd9
     
     ##### example: ICD10 codes associated with Cardiovasculas incidents
         ### input: desease classes I2, I6, I7 and G4
@@ -612,6 +645,11 @@ class BiobankRead():
         res_tmp =[ x in icds for x in df_mini]
         new_df_2 = df[res_tmp]
         return new_df_2
+            
+        
+    def OPCS_code_match(self,df=None,icds=None):
+        HES_10 = self.HES_code_match(df,icds,which='opcs')
+        return HES_10
         
     def SR_code_match(self,df=None,cols=None,icds=None):
         # find input SR desease codes in specified columns from input dataframe
@@ -635,6 +673,29 @@ class BiobankRead():
         new_df2['SR_res'] = new_df[cols].sum(axis=1)
         new_df2['eid'] = df['eid']
         return new_df2
+        
+    def ICD_code_match(self,df=None,cols=None,icds=None):
+        # find input SR desease codes in specified columns from input dataframe
+        # type = (self reported)
+        # insert disease codes as numbers not as strings! ex: 1095, not '1095'
+        df = df.fillna(value=0) # replace nan by a non-disease code
+        if type(icds) is pd.core.series.Series:
+            icds = icds.tolist()
+        icds = [x for x in icds if str(x) != 'nan']
+        if cols is None:
+            cols = df.columns.tolist()
+            # remove eids
+            cols = cols[1::]
+        new_df = pd.DataFrame(columns=cols)
+        new_df['eid'] = df['eid']
+        df = df.replace(np.nan,' ', regex=True)
+        for col in cols:
+            res_tmp1 =[ x in icds for x in df[col]]
+            new_df[col]=res_tmp1
+        new_df2 = pd.DataFrame(columns=['eid','ICD_res'])
+        new_df2['ICD_res'] = new_df[cols].sum(axis=1)
+        new_df2['eid'] = df['eid']
+        return new_df2
       
     def HES_first_time(self,df=None):
         # finds the earliest admission date in HES data for each subject
@@ -648,7 +709,8 @@ class BiobankRead():
         for ee in eids_unique:
             tmp =  df[df['eid']==ee]
             res.append(len(tmp))
-            x = tmp['admidate'].min()
+            #tmp['admidate'] = pd.to_datetime(tmp['admidate'])
+            x = tmp['admidate'].replace(np.nan,self.end_follow_up).min()
             df2=pd.DataFrame([[ee,x]],columns=['eid','first_admidate'])
             new_Df=new_Df.append(df2)#,ignore_index=True)
         return new_Df
@@ -665,11 +727,12 @@ class BiobankRead():
             tmp_ass_date=tmp_ass_date['assess_date'].iloc[0]
             tmp2= tmp[tmp['admidate']>tmp_ass_date]
             if len(tmp2)>0:
-                oo = True
-                x = tmp2['admidate'].min()
+                oo = 1
+                #tmp2['admidate'] = pd.to_datetime(tmp2['admidate'])
+                x = tmp2['admidate'].replace(np.nan,self.end_follow_up).min()
             else:
-                oo = False
-                x = 0
+                oo = 0
+                x = np.nan
             df2 = pd.DataFrame([[ee,oo,x]],columns=['eid','After','date_aft'])
             DF = DF.append(df2)
         return DF
