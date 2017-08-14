@@ -1,5 +1,5 @@
 ################################
-Biobank Read - latest version: 2.0
+Biobank Read - latest version: 2.2
 ################################
 
 BiobankRead is a package that pulls out data from UKBiobank extracted files and turns it into readily usable data-frames for any specified variables. 
