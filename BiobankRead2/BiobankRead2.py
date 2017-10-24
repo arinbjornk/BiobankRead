@@ -226,7 +226,10 @@ class BiobankRead():
         userrows = [t for t in allrows if re.search('>'+variable+'<',str(t))]
         if not userrows:
             userrows = [t for t in allrows if re.search('>'+variable+'.<',str(t))]
-
+        try:
+            userrows==True
+        except:
+            raise Exception('The input variable is not in the files')
         userrows_str = str(userrows[0])
         #x,y,z=userrows.partition('</span></td><td rowspan=')
         # userrows_str = use
@@ -587,7 +590,7 @@ class BiobankRead():
 
     def find_ICD10_codes(self,select=None):
         ## extract ICD10 codes from a large, complete dictionary of ICD10 codes
-        ##          of all deseases known to medicine
+        ##          of all diseases known to medicine
         ## input: select - general code for one class of deseases
         ## output: icd10 - codes of all deseases associated with class
         tmp = self.HES_tsv_read(self.DATA_PATH)
@@ -603,7 +606,7 @@ class BiobankRead():
         
     def find_ICD9_codes(self,select=None):
         ## extract ICD9 codes from a large, complete dictionary of ICD9 codes
-        ##          of all deseases known to medicine
+        ##          of all diseases known to medicine
         ## input: select - general code for one class of deseases
         ## output: icd9 - codes of all deseases associated with class
         tmp = pd.read_csv(self.DATA_PATH_2)
@@ -621,8 +624,8 @@ class BiobankRead():
         ### t=['I2','I7','I6','G4']
         ### codes_icd10 = find_ICD10_codes(t)
          
-    def HES_code_match(self,df=None,cols=None,icds=None,which='diagnosis'):
-        # find input ICD10 codes in specified columns from input df
+    def HES_code_match(self,df=None,cols=None,icds=None,which='ICD10'):
+        # find input ICDs & OPCS codes in specified columns from input HES data frame
         # USe only on'HES' extrated directly from HES.tsv file
         # which: 'diagnosis', 'oper4' or 'diag_icd9'
         if type(icds) is pd.core.series.Series:
@@ -632,12 +635,14 @@ class BiobankRead():
             cols = df.columns.tolist()
         # remove eids
         cols = cols[1::]
-        if which == 'diagnosis':
+        if which == 'ICD10':
             icd = 'diag_icd10'
-        elif which == 'opcs':
+        elif which == 'OPCS':
             icd = 'oper4'
-        else:
+        elif which == 'ICD9':
             icd = 'diag_icd9'
+        else:
+            raise Exception('Option "which" mis-specififed')
         new_df = pd.DataFrame(columns=cols)
         new_df['eid'] = df['eid']
         df_mini = df[icd].tolist()
@@ -648,7 +653,8 @@ class BiobankRead():
             
         
     def OPCS_code_match(self,df=None,icds=None):
-        HES_10 = self.HES_code_match(df,icds,which='opcs')
+        # find input OPCS codes in input HES data frame
+        HES_10 = self.HES_code_match(df,icds,which='OPCS')
         return HES_10
         
     def SR_code_match(self,df=None,cols=None,icds=None):
@@ -675,9 +681,7 @@ class BiobankRead():
         return new_df2
         
     def ICD_code_match(self,df=None,cols=None,icds=None):
-        # find input SR desease codes in specified columns from input dataframe
-        # type = (self reported)
-        # insert disease codes as numbers not as strings! ex: 1095, not '1095'
+        # find input ICD desease codes in input 'Mortality' dataframe'
         df = df.fillna(value=0) # replace nan by a non-disease code
         if type(icds) is pd.core.series.Series:
             icds = icds.tolist()
