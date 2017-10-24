@@ -26,5 +26,5 @@ setup(name='BiobankRead',
 	],
       package_data = {
         # include aux data files:
-        'BiobankRead2': ['data/*.txt', 'data/*.tsv'],},
+        'BiobankRead2': ['data/*.txt', 'data/*.tsv', 'data/*.csv'],},
      )
