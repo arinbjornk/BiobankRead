@@ -56,7 +56,8 @@ To update the package (had it been previously downloaded), just add '--upgrade':
  
  $ pip install BiobankRead --upgrade
  
- 
+Make sure all instances of Python are ended before running these commands
+
 ################################
 Required input 
 ################################
