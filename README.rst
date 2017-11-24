@@ -50,7 +50,13 @@ Simply go through pip install:
  
  $ pip install BiobankRead
 
+To update the package (had it been previously downloaded), just add '--upgrade':
 
+.. code-block::
+ 
+ $ pip install BiobankRead --upgrade
+ 
+ 
 ################################
 Required input 
 ################################
