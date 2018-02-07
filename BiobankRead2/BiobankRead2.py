@@ -11,7 +11,7 @@ Edited 01/06/2017
 import pandas as pd
 import bs4 #beautifulsoup4 package
 import re # RegEx 
-import urllib3
+import urllib2
 import numpy as np
 import os
 from datetime import datetime
@@ -192,6 +192,7 @@ class BiobankRead():
         symbols = BiobankRead.special_char
 
         # DOES THIS WORK THE SAME AS THE NEXT SECTION?
+        
         varlist = list(variable)
         lvarlist = len(varlist)
         newvar = []
@@ -215,20 +216,18 @@ class BiobankRead():
             for i in variable:
                 lim = variable.index(i)            
                 if lim in where:
-                    i = "\%s" % (variable[lim])
-                new_var += i
+                    lim = "\%s" % (variable[lim])
+                new_var += lim
             variable = new_var
-        print variable
         '''
+    
         ##
         #variable = variable.replace('\\', '\\\\')
 
         userrows = [t for t in allrows if re.search('>'+variable+'<',str(t))]
         if not userrows:
             userrows = [t for t in allrows if re.search('>'+variable+'.<',str(t))]
-        try:
-            userrows==True
-        except:
+        if not userrows:
             raise Exception('The input variable is not in the files')
         userrows_str = str(userrows[0])
         #x,y,z=userrows.partition('</span></td><td rowspan=')
@@ -282,7 +281,7 @@ class BiobankRead():
         
         ## Get dictionary of disease codes
         link = BiobankRead.code_link+str(data_coding)
-        response = urllib3.urlopen(link)
+        response = urllib2.urlopen(link)
         html = response.read()
         soup = bs4.BeautifulSoup(html,'html.parser')
         allrows = soup.findAll('tr')
@@ -306,6 +305,7 @@ class BiobankRead():
     def all_related_vars(self, keyword=None, dropNaN=True):
         # extracts all variables related to a keyword variable (input)
         # returns one single df with eids and each 
+        # THIS DOESN'T WORK
     
         stuff = [t for t in self.Vars if re.search(keyword[1::],t)]#t.find(keyword[1::]) > -1]
         if len(stuff) > 1:
@@ -317,13 +317,15 @@ class BiobankRead():
                     tmp = list(DBP.columns.values)
                     DBP = DBP[np.isfinite(DBP[tmp[1]])]    
                 stuff_var[var] = DBP
-        else:
+        elif len(stuff) > 0:
            #print stuff[0]
            stuff_var = self.extract_variable(variable=stuff[0])
            stuff_var = stuff_var[0]
            tmp = list(stuff_var.columns.values)
            if dropNaN:
                stuff_var = stuff_var[np.isfinite(stuff_var[tmp[1]])]  
+        else:
+            print 'No match for', keyword, 'found'
         return stuff_var, stuff
     
     def extract_many_vars(self, keywords=None,
@@ -331,26 +333,32 @@ class BiobankRead():
         # extract variables for several pre-specified var. names 
         # returns one single df with eids and each variables as columns
 
-        if len(keywords) >1:
-            main_Df = pd.DataFrame(columns =['eid'])
-            main_Df['eid'] = self.Eids_all['eid']
-            for var in keywords:
-                DBP = self.extract_variable(variable=var, baseline_only=baseline_only)
-                if spaces:
-                    b,k,a = var.partition(' ')
-                    var = b
-                DBP = self.rename_columns(DBP, var)
-                if dropNaN:
-                # drop subjects with no reported illness
-                    tmp = list(DBP.columns.values)
-                    DBP = DBP[np.isfinite(DBP[tmp[1]])]    
-                main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
+        # Convert single argument to list
+        # This because len(string) > 1
+        if isinstance(keywords, basestring):
+            keywords = [keywords]
+
+        main_Df = pd.DataFrame(columns =['eid'])
+        main_Df['eid'] = self.Eids_all['eid']
+        for var in keywords:
+            DBP = self.extract_variable(variable=var, baseline_only=baseline_only)
+            if spaces:
+                b,k,a = var.partition(' ')
+                var = b
+            DBP = self.rename_columns(DBP, var)
+            if dropNaN:
+            # drop subjects with no reported illness
+                tmp = list(DBP.columns.values)
+                DBP = DBP[np.isfinite(DBP[tmp[1]])]    
+            main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
+        '''
         else:
            #print stuff[0]
-           main_Df = self.extract_variable(variable=keywords[0], baseline_only=baseline_only)
+           main_Df = self.extract_variable(variable=keywords, baseline_only=baseline_only)
            tmp = list(main_Df.columns.values)
            if dropNaN:
                main_Df = main_Df[np.isfinite(main_Df[tmp[1]])]
+        '''
         return main_Df
 
 
@@ -391,17 +399,22 @@ class BiobankRead():
         # output dfs need to be further processed before analysis
 
         conf_names = ['Body mass index (BMI)','Age when attended assessment centre','Ethnic background','Sex']
-        if len(more_vars)>1:
-            for items in more_vars:
-                conf_names.append(items)
-        elif len(more_vars)>0:
-            conf_names.append(more_vars[0])
+        # Convert single argument to list
+        # This because len(string) > 1
+        if isinstance(more_vars, basestring):
+            more_vars = [more_vars]
+            
+        # Add optional extras to confound list
+        for items in more_vars:
+            conf_names.append(items)
+            
+        # Create dictionary of variable values and names
         df_new = {}
-        #print conf_names
         for var in conf_names:
             tmp = self.extract_variable(variable=var)
             tmp = self.rename_columns(df=tmp,key=var)
             df_new[var] = tmp
+            
         return df_new,conf_names
         
     
@@ -439,6 +452,13 @@ class BiobankRead():
         # 1st (1) and 2nd (2) re-visit
         V1 =[]
         for var in col_names:
+            # \d match any decimal digit
+            # . match any character
+            # * match previous character 0 or more times
+            # + matches one or more times
+            # ? matches zero or one time
+            # Matches things like 'something-X.Y or 'something-X_Y'
+            # Where X == visit
             res = re.search('(.*?)-'+str(visit)+'.(\d+)',var)
             if not res is None:
                 V1.append(res.group(0))
@@ -509,7 +529,7 @@ class BiobankRead():
         res = test.group(0)
         x,y,z=res.partition('href="')
         link,y,u=z.partition('">')
-        response = urllib3.urlopen(link)
+        response = urllib2.urlopen(link)
         html = response.read()
         soup = bs4.BeautifulSoup(html,'html.parser')
         allrows = soup.findAll('tr')
@@ -527,12 +547,12 @@ class BiobankRead():
         
     def re_wildcard(self, strs=None):
         # inserts a regex wildcard between two keywords
+        if not type(strs) is list:
+            print 'Input not a list'
+            return None
         n = len(strs)
         if n < 2:
             print 'Not enough words to collate'
-            return None
-        if not type(strs) is list:
-            print 'Input not a list'
             return None
         res = strs[0]
         for word in strs[1::]:

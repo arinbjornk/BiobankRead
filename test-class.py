@@ -7,6 +7,18 @@ Created on Fri Jan 27 17:29:32 2017
 import sys
 import __builtin__
 
+## Required input: files location of the .csv and .html files, and number of
+# subjects N
+# .csv: ukb<release_code>.csv, the main data file produced after extraction from 
+#       the .enc file
+# .html: associated information file, generated alongside the.csv file with all
+#       references to varaibles available 
+## These should be defined before loading the packageas follow:
+#   import __builtin__
+#   __builtin__.namehtml='<file_location>.html'
+#   __builtin__.namecsv='<file_location>.csv' 
+#   __builtin__.N= n
+##
 __builtin__.namehtml='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.html'
 __builtin__.namecsv='D:\\Uk Biobank\\Application 10035\\R8546\\ukb8546.csv'
 __builtin__.n = 502641  
