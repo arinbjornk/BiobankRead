@@ -122,8 +122,6 @@ class BiobankRead():
         #self.assess_dates = self.Get_ass_dates()
         
     def status(self):
-#        print 'projectID:', self.projectID
-#        print 'studyID:', self.studyID
         print 'html:', self.html_file
         print 'Record number', self.N
         return
@@ -184,97 +182,68 @@ class BiobankRead():
         return Ds   
 
     def extract_variable(self, variable=None, baseline_only=False):
+        '''
+        Extracts a single specified variable  (input)
+        Returns data for first visit only if baseline_only == True
+        This function updated by Bill Crum 13/02/2018
+        '''
         
         ### extract fields 
         allrows = self.soup.findAll('tr')
         
         ## search variable string for shitty characters
         symbols = BiobankRead.special_char
-
-        # DOES THIS WORK THE SAME AS THE NEXT SECTION?
         
+        # Deal with special symbols in variable name
         varlist = list(variable)
-        lvarlist = len(varlist)
         newvar = []
-        for v in range(0, lvarlist):
-            if varlist[v] in symbols:
-                newvar.extend(['\\', varlist[v]])
+        for v in varlist:
+            if v in symbols:
+                newvar.extend(['\\', v])
             else:
-                newvar.extend([varlist[v]])
+                newvar.extend([v])
         variable = ''.join(newvar)
                 
-        '''
-        is_symbol = False
-        where = []
-        for x in symbols:
-            t = variable.find(x)
-            if t >-1:
-                is_symbol = True
-                where.append(t)
-        if is_symbol:
-            new_var = ""
-            for i in variable:
-                lim = variable.index(i)            
-                if lim in where:
-                    lim = "\%s" % (variable[lim])
-                new_var += lim
-            variable = new_var
-        '''
-    
-        ##
-        #variable = variable.replace('\\', '\\\\')
-
-        userrows = [t for t in allrows if re.search('>'+variable+'<',str(t))]
-        if not userrows:
-            userrows = [t for t in allrows if re.search('>'+variable+'.<',str(t))]
+        # Find variable embedded like this:
+        # ... <td rowspan="1">Heel ultrasound method<br> ...
+        # Or this:
+        # ... <td rowspan="1">Heel ultrasound method.<br> ...
+        searchvar = '>'+variable+'(.?)<'
+        userrows = [t for t in allrows if re.search(searchvar,str(t))]
         if not userrows:
             raise Exception('The input variable is not in the files')
+        if len(userrows) > 1:
+            print 'warning - more than one variable row found'
+            print 'warning - returning first instance only'
         userrows_str = str(userrows[0])
-        #x,y,z=userrows.partition('</span></td><td rowspan=')
-        # userrows_str = use
 
-        IDs = [] # extract IDs related to variables
-        # extract all variable names 
-        #for line in userrows_str:
+        # extract IDs related to variables
+        # extract all variable names
         match1 = re.search('id=(\d+)',userrows_str)
         if match1:
-            IDs.append(match1.group(1))
+            idx = match1.group(1)
+        else:
+            print 'warning - index for', variable, 'not found'
+            return None
             
-        '''var_names = [] 
-        before,key,after = userrows_str.partition(variable)
-        bb,kk,aa = after.partition('<')
-        var_names.append(key+bb)'''
-        var_names = variable
-
         ## Retrieve all associated columns with variables names 
-        Sub_list = {}
-        for idx in IDs:
-            key = []
-            # What does this next line do?
-            # Take it out for now
-            #x = IDs.index(idx)
-            for link in self.soup.find_all('a', href=BiobankRead.sub_link+idx):
-                tmp = str(link.contents[0].encode('utf-8'))
-                key.append(tmp)
-            Sub_list[var_names]=key
-        ###
-            
-        #my_range = []
-        #for name in var_names:
-        my_range = Sub_list[var_names]
-        my_range.append('eid') # Encoded anonymised participant ID
-        filename = self.csv_file
-        everything = pd.read_csv(filename,usecols=my_range,nrows=self.N)
+        # Encoded anonymised participant ID
+        key = ['eid']
+        for link in self.soup.find_all('a', href=BiobankRead.sub_link+idx):
+            tmp = str(link.contents[0].encode('utf-8'))
+            key.append(tmp) 
+        everything = pd.read_csv(self.csv_file, usecols=key, nrows=self.N)
         
         #na_filter=False)
         # drop columns of data not collected at baseline 
         if baseline_only:
-            cols = everything.columns#.tolist()
+            cols = everything.columns
             keep = ['0.' in x for x in cols]
             keep[0] = True # always keep eid column
             everything = everything[cols[keep]]
             
         return everything
+        
         
     def illness_codes_categories(self, data_coding=6):
         """Returns data coding convention from online page"""
@@ -303,31 +272,31 @@ class BiobankRead():
         
            
     def all_related_vars(self, keyword=None, dropNaN=True):
-        # extracts all variables related to a keyword variable (input)
-        # returns one single df with eids and each 
-        # THIS DOESN'T WORK
-    
-        stuff = [t for t in self.Vars if re.search(keyword[1::],t)]#t.find(keyword[1::]) > -1]
-        if len(stuff) > 1:
-            stuff_var = {}
+        '''
+        Extracts all variables related to a keyword variable (input)
+        Returns one single df with eids and each variable
+        This function updated by Bill Crum 13/02/2018
+        '''
+        
+        if keyword is None:
+            print ' (all_related_vars) supply keyword to search over'
+            return None
+            
+        stuff = [t for t in self.Vars if keyword in t]
+        stuff_var = {}
+        if len(stuff) > 0:
             for var in stuff:
-                DBP, DBP_names = self.extract_variable(variable=var)
+                DBP = self.extract_variable(variable=var)
                 if dropNaN:
                     # drop subjects with no reported illness
                     tmp = list(DBP.columns.values)
                     DBP = DBP[np.isfinite(DBP[tmp[1]])]    
                 stuff_var[var] = DBP
-        elif len(stuff) > 0:
-           #print stuff[0]
-           stuff_var = self.extract_variable(variable=stuff[0])
-           stuff_var = stuff_var[0]
-           tmp = list(stuff_var.columns.values)
-           if dropNaN:
-               stuff_var = stuff_var[np.isfinite(stuff_var[tmp[1]])]  
         else:
             print 'No match for', keyword, 'found'
         return stuff_var, stuff
-    
+
+
     def extract_many_vars(self, keywords=None,
                           dropNaN=False,spaces=False,baseline_only=False):
         # extract variables for several pre-specified var. names 
