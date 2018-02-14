@@ -274,7 +274,7 @@ class BiobankRead():
     def all_related_vars(self, keyword=None, dropNaN=True):
         '''
         Extracts all variables related to a keyword variable (input)
-        Returns one single df with eids and each variable
+        Returns a df with eids for each variable in a dictionary
         This function updated by Bill Crum 13/02/2018
         '''
         
@@ -289,8 +289,12 @@ class BiobankRead():
                 DBP = self.extract_variable(variable=var)
                 if dropNaN:
                     # drop subjects with no reported illness
-                    tmp = list(DBP.columns.values)
-                    DBP = DBP[np.isfinite(DBP[tmp[1]])]    
+                    # Get a boolean series with True where all fields present
+                    tmp = ~DBP.isnull().any(axis=1)
+                    DBP = DBP[tmp]
+                    #don't think this original bit below works as intended
+                    #tmp = list(DBP.columns.values)
+                    #DBP = DBP[np.isfinite(DBP[tmp[1]])]    
                 stuff_var[var] = DBP
         else:
             print 'No match for', keyword, 'found'
@@ -299,9 +303,15 @@ class BiobankRead():
 
     def extract_many_vars(self, keywords=None,
                           dropNaN=False,spaces=False,baseline_only=False):
-        # extract variables for several pre-specified var. names 
-        # returns one single df with eids and each variables as columns
-
+        '''
+        Extract variables for several pre-specified variable names 
+        Supply these as keywords=[var1, var2, ...]
+        Returns one single df with eids and each variables as columns
+        '''
+        if keywords is None:
+            print ' (extract_many_vars) supply [keywords] to search over'
+            return None
+            
         # Convert single argument to list
         # This because len(string) > 1
         if isinstance(keywords, basestring):
@@ -316,18 +326,16 @@ class BiobankRead():
                 var = b
             DBP = self.rename_columns(DBP, var)
             if dropNaN:
-            # drop subjects with no reported illness
-                tmp = list(DBP.columns.values)
-                DBP = DBP[np.isfinite(DBP[tmp[1]])]    
+                # drop subjects with no reported illness in any variable
+                # Get a boolean series with True where all fields present
+                # Search for any null field then negate with ~
+                tmp = ~DBP.isnull().any(axis=1)
+                DBP = DBP[tmp]
+                main_Df = main_Df[tmp]
+                #don't think this original bit below works as intended
+                #tmp = list(DBP.columns.values)
+                #DBP = DBP[np.isfinite(DBP[tmp[1]])]    
             main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
-        '''
-        else:
-           #print stuff[0]
-           main_Df = self.extract_variable(variable=keywords, baseline_only=baseline_only)
-           tmp = list(main_Df.columns.values)
-           if dropNaN:
-               main_Df = main_Df[np.isfinite(main_Df[tmp[1]])]
-        '''
         return main_Df
 
 
