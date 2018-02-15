@@ -14,32 +14,22 @@ import re # RegEx
 import urllib2
 import numpy as np
 import os
+import sys
 from datetime import datetime
 
-
-## Required input: files location of the .csv and .html files, and number of
-# subjects N
+## Required input: files location of the .csv and .html files
 # .csv: ukb<release_code>.csv, the main data file produced after extraction from 
 #       the .enc file
 # .html: associated information file, generated alongside the.csv file with all
 #       references to varaibles available 
-## These should be defined before loading the packageas follow:
-#   import __builtin__
-#   __builtin__.namehtml='<file_location>.html'
-#   __builtin__.namecsv='<file_location>.csv' 
-#   __builtin__.N= n
-##
 
-html_file = namehtml
-csv_file = namecsv
-N=n
 
 class BiobankRead():
     """ A class to parse data from UK BioBank archives.
     
     usage:
     initialise
-        bb = BiobankRead(projectID, studyID, [location])
+        bb = BiobankRead()
 
     class variables
         html_file = path to html
@@ -63,31 +53,50 @@ class BiobankRead():
     code_link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='
 
     
-    def __init__(self, location=None, N=n):
+    def __init__(self, html_file = None, csv_file = None):
         
-        # Status
-        self.OK = True
-        
-        # Number of cases
-        self.N = N
-    
-        # Get filepath
-        self.location = BiobankRead.defloc
-        if location != None:
-            self.location = location
-        
+        if (html_file == None) or (csv_file == None):
+            print
+            print ' CLASS NOT INITIALISED'
+            print
+            print ' To initialise this class, please use'
+            print ' bbclass(html_file = namehtml, csv_file = namecsv)'
+            print 
+            print " namehtml='<file_location>.html'"
+            print " namecsv='<file_location>.csv'"
+            print ' where'
+            print ' ukb<release_code>.csv = the main data file'
+            print '                         produced from the .enc file'
+            print ' something.html = information file, generated'
+            print '                  alongside the.csv file'
+            print
+            self.OK = False
+            return
+
+        if not os.path.isfile(html_file):
+            print
+            print ' INITIALISATION ERROR: html_file =', html_file, 'not found'
+            print
+            self.OK = False
+            return 
+            
+        if not os.path.isfile(csv_file):
+            print
+            print ' INITIALISATION ERROR: csv_file =', csv_file, 'not found'
+            print
+            self.OK = False
+            return None
+
+        print ' OK, initialising class now ... '
+                    
         # Construct the path to the html file
         self.html_file = html_file#self.files_path()
         self.csv_file = csv_file#self.files_path()
-        if self.html_file == None:
-            print 'error - html location', location, 'not found'
-            self.OK = False
-            return
+
         #HES file processing variables
         this_dir, this_filename = os.path.split(__file__)
-        self.DATA_PATH = os.path.join(this_dir, "data", "ICD10_UKB.tsv")
-        self.DATA_PATH_2 = os.path.join(this_dir, "data","ICD9_codes.csv")        
-        
+        self.DATA_PATH   = os.path.join(this_dir, "data", "ICD10_UKB.tsv")
+        self.DATA_PATH_2 = os.path.join(this_dir, "data", "ICD9_codes.csv")        
         
         # Parse html 
         self.soup = self.makeSoup()
@@ -104,18 +113,20 @@ class BiobankRead():
         self.data_types = self.All_variables()['types']
         
         # All EIDS
-        # Populate by calling self.GetEIDs(n_subjects=N)
-        # QUERY - WHERE IS N SET?
         self.Eids_all = self.GetEIDs()
+
         # This appears clumsy but is because None can't be compared to a data frame
         # http://stackoverflow.com/questions/36217969/how-to-compare-pandas-dataframe-against-none-in-python
         self.OK = False
+        self.N = -1
         if self.Eids_all is not None:
             self.OK = True
         if not self.OK:
             print 'error - failed to get Eids'
             self.OK = False
             return
+        self.N = len(self.Eids_all)
+        print ' Found', self.N, 'EIDS'
         
         # All attendance dates
         # QUERY - WHERE IS N SET?
@@ -172,7 +183,7 @@ class BiobankRead():
         filename = self.csv_file 
         if filename == None:
             return None
-        EIDs = pd.read_csv(filename, usecols=['eid'], nrows=self.N)
+        EIDs = pd.read_csv(filename, usecols=['eid'])
         return EIDs
     
     def Get_ass_dates(self):
@@ -181,20 +192,19 @@ class BiobankRead():
         Ds = self.extract_variable(var)
         return Ds   
 
-    def extract_variable(self, variable=None, baseline_only=False):
+    def extract_variable(self, variable=None, baseline_only=False, dropNan=False):
         '''
         Extracts a single specified variable  (input)
         Returns data for first visit only if baseline_only == True
+        dropNan=True only returns records without Nan entries
         This function updated by Bill Crum 13/02/2018
         '''
         
-        ### extract fields 
+        # extract fields 
         allrows = self.soup.findAll('tr')
         
-        ## search variable string for shitty characters
-        symbols = BiobankRead.special_char
-        
         # Deal with special symbols in variable name
+        symbols = BiobankRead.special_char
         varlist = list(variable)
         newvar = []
         for v in varlist:
@@ -241,6 +251,10 @@ class BiobankRead():
             keep = ['0.' in x for x in cols]
             keep[0] = True # always keep eid column
             everything = everything[cols[keep]]
+            
+        if dropNan:
+            tmp = ~everything.isnull().any(axis=1)
+            everything = everything[tmp]
             
         return everything
         
