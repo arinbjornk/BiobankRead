@@ -192,7 +192,7 @@ class BiobankRead():
         Ds = self.extract_variable(var)
         return Ds   
 
-    def extract_variable(self, variable=None, baseline_only=False, dropNan=False):
+    def extract_variable(self, variable=None, baseline_only=False, dropNaN=False):
         '''
         Extracts a single specified variable  (input)
         Returns data for first visit only if baseline_only == True
@@ -252,7 +252,7 @@ class BiobankRead():
             keep[0] = True # always keep eid column
             everything = everything[cols[keep]]
             
-        if dropNan:
+        if dropNaN:
             tmp = ~everything.isnull().any(axis=1)
             everything = everything[tmp]
             
@@ -353,35 +353,44 @@ class BiobankRead():
         return main_Df
 
 
-    def Mean_per_visit(self, df=None,dropnan=False):
-        # average of one variable at each visit
-        # input= df with variables of interest
-        # only relevant if multiple measurements available
+    def Mean_per_visit(self, df=None,dropNaN=False):
+        '''
+        Average of variables at each visit
+        i.e. when multiple measurements per visit
+        input= df with variables of interest
+        only relevant if multiple measurements available
+        NOTE: Bill Crum changed '_' date delimiter to '-'
+        '''
+        
+        # e.g.  Tmp = ['eid', '4080-0.0', '4080-0.1', '4080-1.0', '4080-1.1', '4080-2.0', '4080-2.1']
         Tmp = list(df.columns.tolist())
-        # isolate variables
-        tmp2 = list(set([x.partition('_')[0] for x in Tmp]))
+        # Get time-field root
+        # e.g. tmp2 = ['4080']
+        tmp2 = list(set([x.partition('-')[0] for x in Tmp]))
         tmp2 = [y for y in tmp2 if 'eid' not in y] # remove eid column
         # initiate output
         new_df = pd.DataFrame(columns=['eid'])
         new_df['eid']=df['eid']
         # for each variable in df
         for var in tmp2:
-            sub = [x for x in Tmp if var+'_' in x]
-            sub_rounds = [x.partition('_')[2] for x in sub]
+            # e.g. sub = ['4080-0.0', '4080-0.1', '4080-1.0', '4080-1.1', '4080-2.0', '4080-2.1']
+            sub = [x for x in Tmp if var+'-' in x]
+            # e.g. sub_rounds = ['0.0', '0.1', '1.0', '1.1', '2.0', '2.1']
+            sub_rounds = [x.partition('-')[2] for x in sub]
+            # e.g. ['0', '0', '1', '1', '2', '2']
             rounds = [x.partition('.')[0] for x in sub_rounds]
-            u=0
             df_sub = pd.DataFrame(columns=['eid'])
             df_sub['eid']=df['eid']
             # for each visit
             for t in range(int(max(rounds))+1):
-                per_round = [x for x in sub if '_'+str(t) in x]
-                if dropnan:
-                    df_sub[var+str(u)] = df[per_round].mean(axis=1,skipna=False)
+                per_round = [x for x in sub if '-'+str(t) in x]
+                if dropNaN:
+                    df_sub[var+str(t)] = df[per_round].mean(axis=1,skipna=False)
                 else:
-                    df_sub[var+str(u)] = df[per_round].mean(axis=1)
-                u +=1
+                    df_sub[var+str(t)] = df[per_round].mean(axis=1)
             new_df = pd.merge(new_df,df_sub,on='eid')
         return new_df
+    
     
     def confounders_gen(self, more_vars = []):
         # creates a dictionary of conventional confounding variables
@@ -431,16 +440,40 @@ class BiobankRead():
 
     
     def df_mean(self, df=None,key=None):
-        # returns mean of data values excluding eid
-        cols = self.get_cols_names(df=df)
+        '''
+        df_mean(df=None,key=None):
+        returns mean of data values as a new data-frame
+        df = data frame containing variables
+        key = name of mean in new dataframe
+        
+        (I suspect this isn't used any more.)
+        '''
+        if df is None:
+            print ' (df_mean) supply dataframe with variables of interest'
+            return None
+        if key is None:
+            print ' (df_mean) supply key as name of created mean'
+            return None
+        cols = df.columns.tolist()
         new_df = pd.DataFrame(columns=['eid',key])
         new_df['eid'] = df['eid']
         new_df[key] = df[cols[1::]].mean(axis=1)
         return new_df
     
-    def vars_by_visits(self, col_names=None,visit=0):
-        # returns variables names associated with initial assessment (0), 1st (1) and 2nd (2) re-visit
-        # 1st (1) and 2nd (2) re-visit
+    def vars_by_visits(self, col_names=None, visit=0):
+        '''
+        vars_by_visits(col_names=None, visit=0)
+        returns variables in col_names associated with specified visit
+        e.g. bbclass.vars_by_visits(col_names=['4080-0.0', '4080-0.1', '4080-2.0'], visit=0)
+        returns ['4080-0.0', '4080-0.1']
+        '''
+        if col_names is None:
+            print ' (vars_by_visits) supply variable names in col_names'
+            return None
+        # Convert single argument to list
+        # This because len(string) > 1
+        if isinstance(col_names, basestring):
+            col_names = [col_names]
         V1 =[]
         for var in col_names:
             # \d match any decimal digit
@@ -450,7 +483,7 @@ class BiobankRead():
             # ? matches zero or one time
             # Matches things like 'something-X.Y or 'something-X_Y'
             # Where X == visit
-            res = re.search('(.*?)-'+str(visit)+'.(\d+)',var)
+            res = re.search('(.*?)-'+str(visit)+'.(\d+)', var)
             if not res is None:
                 V1.append(res.group(0))
         return V1
@@ -513,9 +546,10 @@ class BiobankRead():
         userrows = [t for t in allrows if re.search('>'+variable+'<',str(t))]
         row_str = str(userrows[0])
         foo = row_str.find('Uses data-coding')
-        if foo is None:
+        if foo < 0:
             print 'No data coding associated with this variable'
             return None
+        print row_str
         test = re.search('coding <a href=\"(.?)*\">',row_str)
         res = test.group(0)
         x,y,z=res.partition('href="')
