@@ -321,6 +321,8 @@ class BiobankRead():
         Extract variables for several pre-specified variable names 
         Supply these as keywords=[var1, var2, ...]
         Returns one single df with eids and each variables as columns
+        dropNaN = True/False = whether to ignore NaN entries
+        spaces = drop variable name after first space when labelling columns
         '''
         if keywords is None:
             print ' (extract_many_vars) supply [keywords] to search over'
@@ -334,11 +336,17 @@ class BiobankRead():
         main_Df = pd.DataFrame(columns =['eid'])
         main_Df['eid'] = self.Eids_all['eid']
         for var in keywords:
+            
+            # Get variable
             DBP = self.extract_variable(variable=var, baseline_only=baseline_only)
+            
+            # Partition name for column naming
             if spaces:
                 b,k,a = var.partition(' ')
                 var = b
             DBP = self.rename_columns(DBP, var)
+            
+            # Get rid of NaNs
             if dropNaN:
                 # drop subjects with no reported illness in any variable
                 # Get a boolean series with True where all fields present
@@ -348,16 +356,48 @@ class BiobankRead():
                 main_Df = main_Df[tmp]
                 #don't think this original bit below works as intended
                 #tmp = list(DBP.columns.values)
-                #DBP = DBP[np.isfinite(DBP[tmp[1]])]    
+                #DBP = DBP[np.isfinite(DBP[tmp[1]])]
+                
+            # Add variable to returned data-frame    
             main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
+            
         return main_Df
 
+
+
+    def correlate_varlist(self, varlist, cortype='pearson', dropNaN=False):
+        '''
+        Pairwise correlation between selected variables.
+        cortype = correlation type = one of ['pearson','kendall', 'spearman']
+        dropNaN = True/False = whether to ignore NaN entries
+        '''
+        corrList = ['pearson','kendall', 'spearman']
+        if cortype not in corrList:
+            print 'argument cortype must be one of:'
+            print corrList
+            return None
+        df = self.extract_many_vars(varlist, dropNaN=dropNaN)
+        correlation = df.corr(method='pearson');
+        return correlation, df
+        
+        
+    def covariance_varlist(self, varlist, dropNaN=False):
+        '''
+        Pairwise covariance between selected variables.
+        dropNaN = True/False = whether to ignore NaN entries
+        '''
+        df = self.extract_many_vars(varlist, dropNaN=dropNaN)
+        covariance = df.cov();
+        return covariance, df
+        
+         
 
     def Mean_per_visit(self, df=None,dropNaN=False):
         '''
         Average of variables at each visit
         i.e. when multiple measurements per visit
-        input= df with variables of interest
+        input = df with variables of interest
+        dropNaN = True/False = whether to ignore NaN entries
         only relevant if multiple measurements available
         NOTE: Bill Crum changed '_' date delimiter to '-'
         '''
@@ -430,7 +470,7 @@ class BiobankRead():
             else: #fill spaces
                 res = [m.start() for m in re.finditer(' ', b)]
                 s = list(b)
-                if len(res):
+                if len(res) > 0:
                     for tmp in res:
                         s[tmp] = '_'
                 s = "".join(s)
@@ -549,7 +589,6 @@ class BiobankRead():
         if foo < 0:
             print 'No data coding associated with this variable'
             return None
-        print row_str
         test = re.search('coding <a href=\"(.?)*\">',row_str)
         res = test.group(0)
         x,y,z=res.partition('href="')
@@ -680,14 +719,11 @@ class BiobankRead():
             cols = df.columns.tolist()
         # remove eids
         cols = cols[1::]
-        if which == 'ICD10':
-            icd = 'diag_icd10'
-        elif which == 'OPCS':
-            icd = 'oper4'
-        elif which == 'ICD9':
-            icd = 'diag_icd9'
-        else:
-            raise Exception('Option "which" mis-specififed')
+        whichdict = {'ICD10' : 'diag_icd10', 'OPCS' : 'oper4', 'ICD9' : 'diag_icd9'}
+        if which not in whichdict:
+            print ' (HES_code_match) unrecognised diagnosis code'
+            return None
+        icd = whichdict[which]
         new_df = pd.DataFrame(columns=cols)
         new_df['eid'] = df['eid']
         df_mini = df[icd].tolist()
