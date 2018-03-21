@@ -14,6 +14,7 @@ import re # RegEx
 import urllib2
 import numpy as np
 import os
+import os.path
 import sys
 from datetime import datetime
 
@@ -363,7 +364,22 @@ class BiobankRead():
             
         return main_Df
 
-
+    def df2csv(self, df=None, csvfile=None, force=False):
+        '''
+        Save a supplied data-frame as a csv file
+        '''
+        if df is None:
+            print ' supply a data-frame'
+            return
+        if csvfile is None:
+            print ' supply filename.csv'
+            return
+        if os.path.isfile(csvfile) and not force:
+            print ' %s exists and won\'t be overwritten' % csvfile
+            print 'use force=True to override'
+            return
+        df.to_csv(csvfile)
+        
 
     def correlate_varlist(self, varlist, cortype='pearson', dropNaN=False):
         '''
