@@ -50,6 +50,9 @@ class BiobankRead():
     special_char = "~`!@#$%^&*()_-+={}[]:>;',</?*-+" 
     
     defloc = os.path.join('D:\\', 'Uk Biobank', 'Application ')
+    
+    # DEPRECATED - THESE PATHS CAN CHANGE AND ARE NOW EXTRACTED
+    # DIRECTLY FROM THE DATA FILE - Bill Crum April 2018
     sub_link  = 'http://biobank.ctsu.ox.ac.uk/crystal/field.cgi?id='
     code_link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='
 
@@ -240,7 +243,10 @@ class BiobankRead():
         ## Retrieve all associated columns with variables names 
         # Encoded anonymised participant ID
         key = ['eid']
-        for link in self.soup.find_all('a', href=BiobankRead.sub_link+idx):
+        # explicit href search - deprecated
+        #for link in self.soup.find_all('a', href=BiobankRead.sub_link+idx):
+        # generic href search -new April 2018
+        for link in self.soup.find_all("a", href = re.compile("field.cgi\?id="+idx+"$")):
             tmp = str(link.contents[0].encode('utf-8'))
             key.append(tmp) 
         everything = pd.read_csv(self.csv_file, usecols=key, nrows=self.N)
@@ -263,8 +269,19 @@ class BiobankRead():
     def illness_codes_categories(self, data_coding=6):
         """Returns data coding convention from online page"""
         
+        
+        # Get generic coding link - new April 2018
+        linkstr = self.soup.find_all("a", href = re.compile("coding.cgi\?id="+str(data_coding)+"$"))
+        if len(linkstr) == 0:
+            return None
+        if not isinstance(linkstr, basestring):
+            linkstr = linkstr[0]
+        link = linkstr['href']
+            
+        # Get specific coding link - deprecated
+        #link = BiobankRead.code_link+str(data_coding)
+        
         ## Get dictionary of disease codes
-        link = BiobankRead.code_link+str(data_coding)
         response = urllib2.urlopen(link)
         html = response.read()
         soup = bs4.BeautifulSoup(html,'html.parser')
@@ -363,6 +380,7 @@ class BiobankRead():
             main_Df = pd.merge(main_Df,DBP,on='eid',how='outer')
             
         return main_Df
+
 
     def df2csv(self, df=None, csvfile=None, force=False):
         '''
