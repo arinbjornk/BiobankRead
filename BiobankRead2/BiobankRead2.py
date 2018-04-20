@@ -411,6 +411,8 @@ class BiobankRead():
             print corrList
             return None
         df = self.extract_many_vars(varlist, dropNaN=dropNaN)
+        # Exclude eid column from correlation
+	df = df.drop(['eid'], axis=1)
         correlation = df.corr(method='pearson');
         return correlation, df
         
@@ -421,6 +423,8 @@ class BiobankRead():
         dropNaN = True/False = whether to ignore NaN entries
         '''
         df = self.extract_many_vars(varlist, dropNaN=dropNaN)
+        # Exclude eid column from covariance
+	df = df.drop(['eid'], axis=1)
         covariance = df.cov();
         return covariance, df
         
