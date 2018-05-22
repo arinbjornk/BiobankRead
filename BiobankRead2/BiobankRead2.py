@@ -47,7 +47,7 @@ class BiobankRead():
     """
     
     # needed to handle some funny variable names
-    special_char = "~`!@#$%^&*()_-+={}[]:>;',</?*-+" 
+    special_char = "~`!@#$%^&*()-+={}[]:>;',</?*-+" 
     
     defloc = os.path.join('D:\\', 'Uk Biobank', 'Application ')
     
@@ -362,7 +362,7 @@ class BiobankRead():
             if spaces:
                 b,k,a = var.partition(' ')
                 var = b
-            DBP = self.rename_columns(DBP, var)
+            DBP = self.rename_columns(DBP, var, baseline_only=baseline_only)
             
             # Get rid of NaNs
             if dropNaN:
@@ -438,13 +438,20 @@ class BiobankRead():
         dropNaN = True/False = whether to ignore NaN entries
         only relevant if multiple measurements available
         NOTE: Bill Crum changed '_' date delimiter to '-'
+        NOTE (27/04): Deb S-L changed '-' to regex expression to extract '-' or '_'
         '''
         
         # e.g.  Tmp = ['eid', '4080-0.0', '4080-0.1', '4080-1.0', '4080-1.1', '4080-2.0', '4080-2.1']
         Tmp = list(df.columns.tolist())
         # Get time-field root
         # e.g. tmp2 = ['4080']
-        tmp2 = list(set([x.partition('-')[0] for x in Tmp]))
+
+        ### find separation type###
+        match1 = re.search('.*?(.)(\d.\d)$',Tmp[1]) # finds what's next to 0.0, 0.1, 1.0 et....
+        ###
+        mychar=match1.group(1)
+        tmp2 = list(set([x.partition(mychar)[0] for x in Tmp]))
+
         tmp2 = [y for y in tmp2 if 'eid' not in y] # remove eid column
         # initiate output
         new_df = pd.DataFrame(columns=['eid'])
@@ -452,25 +459,25 @@ class BiobankRead():
         # for each variable in df
         for var in tmp2:
             # e.g. sub = ['4080-0.0', '4080-0.1', '4080-1.0', '4080-1.1', '4080-2.0', '4080-2.1']
-            sub = [x for x in Tmp if var+'-' in x]
+            sub = [x for x in Tmp if var+mychar in x]
             # e.g. sub_rounds = ['0.0', '0.1', '1.0', '1.1', '2.0', '2.1']
-            sub_rounds = [x.partition('-')[2] for x in sub]
+            sub_rounds = [x.partition(mychar)[2] for x in sub]
             # e.g. ['0', '0', '1', '1', '2', '2']
             rounds = [x.partition('.')[0] for x in sub_rounds]
             df_sub = pd.DataFrame(columns=['eid'])
             df_sub['eid']=df['eid']
             # for each visit
             for t in range(int(max(rounds))+1):
-                per_round = [x for x in sub if '-'+str(t) in x]
+                per_round = [x for x in sub if mychar+str(t) in x]
                 if dropNaN:
-                    df_sub[var+str(t)] = df[per_round].mean(axis=1,skipna=False)
+                    df_sub[var+'_mean_'+str(t)] = df[per_round].mean(axis=1,skipna=True)
                 else:
-                    df_sub[var+str(t)] = df[per_round].mean(axis=1)
+                    df_sub[var+'_mean_'+str(t)] = df[per_round].mean(axis=1, skipna=False)
             new_df = pd.merge(new_df,df_sub,on='eid')
         return new_df
     
     
-    def confounders_gen(self, more_vars = []):
+    def confounders_gen(self, more_vars = [], baseline_only=False):
         # creates a dictionary of conventional confounding variables
         # more can be added through the 'more_vars' input 
         # output = dictionary with dfs, 1 df per variable
@@ -490,7 +497,7 @@ class BiobankRead():
         df_new = {}
         for var in conf_names:
             tmp = self.extract_variable(variable=var)
-            tmp = self.rename_columns(df=tmp,key=var)
+            tmp = self.rename_columns(df=tmp,key=var, baseline_only=False)
             df_new[var] = tmp
             
         return df_new,conf_names
@@ -567,11 +574,12 @@ class BiobankRead():
         return V1
     
 
-    def rename_columns(self, df=None,key=None,option_str=True):
+    def rename_columns(self, df=None,key=None,option_str=True, baseline_only=False):
         # rename the columns of a data frame with something sensible
         col_names = df.columns.tolist()
         col_new = ['eid']
-        for k in range(3):
+        nvisits = 1 if baseline_only else 3
+        for k in range(nvisits):
             V0 = self.vars_by_visits(col_names,k)
             for v in V0:
                 b,k,a = v.partition('-')
