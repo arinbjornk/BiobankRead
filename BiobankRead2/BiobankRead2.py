@@ -57,22 +57,24 @@ class BiobankRead():
     code_link = 'http://biobank.ctsu.ox.ac.uk/crystal/coding.cgi?id='
 
     
-    def __init__(self, html_file = None, csv_file = None):
+    def __init__(self, html_file = None, csv_file = None, csv_exclude = None):
         
         if (html_file == None) or (csv_file == None):
             print
             print ' CLASS NOT INITIALISED'
             print
             print ' To initialise this class, please use'
-            print ' bbclass(html_file = namehtml, csv_file = namecsv)'
+            print ' bbclass(html_file = namehtml, csv_file = namecsv, [csv_exclude = excludecsv])'
             print 
             print " namehtml='<file_location>.html'"
             print " namecsv='<file_location>.csv'"
+            print " excludecsv='<file_location>.csv'"
             print ' where'
             print ' ukb<release_code>.csv = the main data file'
             print '                         produced from the .enc file'
             print ' something.html = information file, generated'
             print '                  alongside the.csv file'
+            print ' exclusions.csv = CSV with single \'eid\' column of cases to exclude'
             print
             self.OK = False
             return
@@ -118,7 +120,7 @@ class BiobankRead():
         
         # All EIDS
         self.Eids_all = self.GetEIDs()
-
+        
         # This appears clumsy but is because None can't be compared to a data frame
         # http://stackoverflow.com/questions/36217969/how-to-compare-pandas-dataframe-against-none-in-python
         self.OK = False
@@ -132,6 +134,23 @@ class BiobankRead():
         self.N = len(self.Eids_all)
         print ' Found', self.N, 'EIDS'
         
+        # Excluded EIDS
+        self.Eids_exclude = None
+        if csv_exclude != None:
+            self.Eids_exclude = self.GetEIDs(csv_exclude)
+            self.Nexcl = len(self.Eids_exclude)
+            print ' Found', self.Nexcl, 'potential EIDS to exclude'
+            
+        # Apply exclusions to EID list
+        if type(self.Eids_exclude) == pd.DataFrame:
+            df = pd.merge(self.Eids_all, self.Eids_exclude, how='outer', indicator=True)
+            self.Eids_all = df.loc[df['_merge'] == 'left_only']['eid']
+            Nold = self.N
+            self.N = len(self.Eids_all)
+            print ' ', Nold-self.N, 'matched exclusions were made'
+            if Nold > self.N:
+                print ' ', self.N, 'EIDS remain'
+
         # All attendance dates
         # QUERY - WHERE IS N SET?
         #self.assess_dates = self.Get_ass_dates()
@@ -181,11 +200,12 @@ class BiobankRead():
         res = res2
         return {'names':res, 'types':data_type}
 
-    def GetEIDs(self):
+    def GetEIDs(self, filename=None):
         """Return all the EIDs"""
         # data frame of EIDs
-        filename = self.csv_file 
-        if filename == None:
+        if filename is None: 
+            filename = self.csv_file 
+        if filename is None:
             return None
         EIDs = pd.read_csv(filename, usecols=['eid'])
         return EIDs
